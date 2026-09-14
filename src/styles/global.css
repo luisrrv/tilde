@@ -1,0 +1,102 @@
+/*
+ * Base element styles and the type scale built from tokens.css.
+ * Every value here reads a token — no raw hex, no one-off sizes.
+ */
+
+@import './tokens.css';
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  color-scheme: light;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font);
+  font-size: var(--text-base);
+  line-height: var(--leading-body);
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* the comfortable measure, applied to whatever wraps page content */
+.measure {
+  max-width: var(--measure);
+  margin-inline: auto;
+  padding-inline: 1.25rem;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  margin: 0 0 0.75em;
+  font-size: var(--text-lg);
+  font-weight: 400;
+  line-height: var(--leading-tight);
+  letter-spacing: 0.02em;
+}
+
+p {
+  margin: 0 0 1em;
+}
+
+a {
+  color: var(--fg);
+  text-decoration: underline;
+  text-decoration-color: var(--rule);
+  text-underline-offset: 0.15em;
+}
+
+a:hover,
+a:focus-visible {
+  color: var(--accent);
+  text-decoration-color: currentColor;
+}
+
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+small,
+.meta {
+  font-size: var(--text-sm);
+  color: var(--fg-dim);
+}
+
+hr,
+.rule {
+  border: none;
+  border-top: 1px solid var(--rule);
+  margin: 2em 0;
+}
+
+/* an ASCII-style separator as an alternative to <hr> */
+.ascii-rule {
+  color: var(--rule);
+  font-size: var(--text-sm);
+  letter-spacing: 0;
+  white-space: pre;
+  margin: 2em 0;
+  user-select: none;
+}
+
+code,
+pre {
+  font-family: var(--font);
+  font-size: var(--text-sm);
+}
+
+::selection {
+  background: var(--accent);
+  color: var(--bg);
+}
