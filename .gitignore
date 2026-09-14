@@ -1,0 +1,19 @@
+# working docs — not part of the public repo
+blueprint.md
+prompt_01_scaffold.md
+
+# env
+.env
+.env.*
+!.env.example
+
+# astro / node
+node_modules/
+dist/
+.astro/
+npm-debug.log*
+
+# editor / os
+.DS_Store
+.vscode/
+*.swp
