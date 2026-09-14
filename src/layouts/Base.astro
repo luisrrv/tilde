@@ -1,0 +1,44 @@
+---
+import '../styles/global.css';
+
+interface Props {
+  title: string;
+  description: string;
+}
+
+const { title, description } = Astro.props;
+
+// The footer shows the *build* time, not any content's timestamp — see
+// §4 of blueprint.md. It doubles as the keep-alive's liveness signal:
+// if this date stops advancing, the scheduled rebuild has stopped
+// running. Computed once, at build time, deliberately — this is not
+// one of the three client-JS pieces the site budgets for (§3).
+const buildDate = new Date().toISOString().slice(0, 10);
+---
+
+<!doctype html>
+<html lang="en" data-theme="default">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{title}</title>
+    <meta name="description" content={description} />
+
+    {/*
+      Favicon, OG/twitter tags, and sitemap are real site metadata
+      (blueprint §5) but are not part of this task's scope (§19
+      steps 1-7) — no favicon asset exists yet. Added when the real
+      pages and content are built.
+    */}
+  </head>
+  <body>
+    <div class="measure">
+      <slot />
+
+      <footer>
+        <p class="rule"></p>
+        <p class="meta">last updated: {buildDate} · best viewed with: a browser</p>
+      </footer>
+    </div>
+  </body>
+</html>
