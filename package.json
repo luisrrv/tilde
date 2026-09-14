@@ -1,0 +1,17 @@
+{
+  "name": "tilde",
+  "type": "module",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "astro dev",
+    "start": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview",
+    "astro": "astro",
+    "verify:rls": "node scripts/verify-rls.mjs"
+  },
+  "dependencies": {
+    "astro": "^7.3.2"
+  }
+}

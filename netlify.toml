@@ -1,0 +1,12 @@
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+# /admin is a client-rendered island on an otherwise static host.
+# Client-side routing there needs an SPA fallback so deep links
+# and refreshes don't 404. Every other path is a real static file
+# Astro already generated, so this only ever catches /admin/*.
+[[redirects]]
+  from = "/admin/*"
+  to = "/admin/index.html"
+  status = 200
