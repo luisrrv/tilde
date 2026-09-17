@@ -1,5 +1,6 @@
 ---
 import '../styles/global.css';
+import { supabase } from '../lib/supabase';
 
 interface Props {
   title: string;
@@ -14,6 +15,17 @@ const { title, description } = Astro.props;
 // running. Computed once, at build time, deliberately — this is not
 // one of the three client-JS pieces the site budgets for (§3).
 const buildDate = new Date().toISOString().slice(0, 10);
+
+// Slugs for the terminal's `random` command (§7). Best-effort: this
+// runs on every page build, and a hiccup here shouldn't fail the whole
+// site — the command just has nothing to offer that day.
+let logSlugs: string[] = [];
+try {
+  const { data } = await supabase.from('logs').select('slug').eq('published', true);
+  logSlugs = (data ?? []).map((row) => row.slug as string);
+} catch {
+  logSlugs = [];
+}
 ---
 
 <!doctype html>
@@ -26,12 +38,29 @@ const buildDate = new Date().toISOString().slice(0, 10);
 
     {/*
       Favicon, OG/twitter tags, and sitemap are real site metadata
-      (blueprint §5) but are not part of this task's scope (§19
-      steps 1-7) — no favicon asset exists yet. Added when the real
-      pages and content are built.
+      (blueprint §5) but are not part of this task's scope — no
+      favicon asset exists yet. Added when the real pages and content
+      are built.
     */}
   </head>
   <body>
+    <header class="site-header measure">
+      <a href="/" class="wordmark" aria-label="home">~</a>
+      <nav>
+        <a href="/log">log</a>
+        <a href="/now">now</a>
+      </nav>
+      <button
+        type="button"
+        id="terminal-toggle"
+        class="help-tap"
+        aria-label="open terminal"
+        title="~ works too, if you have a keyboard"
+      >
+        [ ? ]
+      </button>
+    </header>
+
     <div class="measure">
       <slot />
 
@@ -40,5 +69,281 @@ const buildDate = new Date().toISOString().slice(0, 10);
         <p class="meta">last updated: {buildDate} · best viewed with: a browser</p>
       </footer>
     </div>
+
+    <div id="terminal-overlay" class="terminal-overlay" hidden data-log-slugs={JSON.stringify(logSlugs)}>
+      <div class="terminal-box" role="dialog" aria-label="terminal">
+        <p class="terminal-hint" id="terminal-greeting"></p>
+        <p class="terminal-hint">type `help`.</p>
+        <div class="terminal-line">
+          <span class="terminal-prompt">&gt;</span>
+          <input
+            type="text"
+            id="terminal-input"
+            class="terminal-input"
+            autocomplete="off"
+            autocapitalize="off"
+            spellcheck="false"
+            aria-label="terminal command input"
+          />
+        </div>
+        <pre id="terminal-output" class="terminal-output" aria-live="polite"></pre>
+      </div>
+    </div>
   </body>
 </html>
+
+<style>
+  .site-header {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding-block: 1rem;
+    border-bottom: 1px solid var(--rule);
+    font-size: var(--text-sm);
+  }
+
+  .site-header .wordmark {
+    font-size: var(--text-lg);
+    text-decoration: none;
+  }
+
+  .site-header nav {
+    display: flex;
+    gap: 0.85rem;
+    margin-right: auto;
+  }
+
+  .help-tap {
+    font: inherit;
+    color: var(--fg-dim);
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0;
+  }
+
+  .help-tap:hover,
+  .help-tap:focus-visible {
+    color: var(--accent);
+  }
+
+  .terminal-overlay {
+    position: fixed;
+    inset: auto 0 0 0;
+    display: flex;
+    justify-content: center;
+    padding: 1rem;
+    pointer-events: none;
+    z-index: 50;
+  }
+
+  .terminal-overlay[hidden] {
+    display: none;
+  }
+
+  .terminal-overlay:not([hidden]) {
+    pointer-events: auto;
+  }
+
+  .terminal-box {
+    width: 100%;
+    max-width: var(--measure);
+    background: var(--term-bg);
+    color: var(--term-fg);
+    border-radius: 4px;
+    padding: 0.85rem 1rem;
+    font-size: var(--text-sm);
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.25);
+  }
+
+  .terminal-hint {
+    margin: 0 0 0.35em;
+    color: var(--term-dim);
+  }
+
+  .terminal-hint:empty {
+    display: none;
+  }
+
+  .terminal-line {
+    display: flex;
+    align-items: center;
+    gap: 0.5em;
+  }
+
+  .terminal-prompt {
+    color: var(--term-dim);
+  }
+
+  .terminal-input {
+    flex: 1;
+    background: none;
+    border: none;
+    color: var(--term-fg);
+    font: inherit;
+    caret-color: var(--accent);
+  }
+
+  .terminal-input:focus {
+    outline: none;
+  }
+
+  .terminal-output {
+    margin: 0.5em 0 0;
+    color: var(--term-fg);
+    font-family: var(--font);
+    font-size: var(--text-sm);
+    white-space: pre-wrap;
+    max-height: 30vh;
+    overflow-y: auto;
+  }
+
+  .terminal-output:empty {
+    display: none;
+  }
+</style>
+
+<script>
+  // Client-JS budget items 1 + 2 (§3): the `~` terminal overlay (§7)
+  // and the localStorage first-visit check (§15) share this single
+  // inline script, present on every page via this layout. Both are
+  // progressive enhancement — with JS off the terminal simply never
+  // opens (conventional nav still works) and the first-visit copy,
+  // wherever it appears, is what everyone sees.
+  const SEEN_KEY = 'tilde:seen';
+
+  let hasVisitedBefore = false;
+  try {
+    hasVisitedBefore = localStorage.getItem(SEEN_KEY) === '1';
+  } catch {
+    hasVisitedBefore = false; // storage blocked — the honest fallback is "first visit"
+  }
+
+  function markSeen() {
+    try {
+      localStorage.setItem(SEEN_KEY, '1');
+    } catch {
+      // storage blocked; nothing to persist, every visit reads as "first"
+    }
+  }
+
+  // ---- first-visit greeting swap, wherever [data-greeting] appears ----
+  const greeting = document.querySelector<HTMLElement>('[data-greeting]');
+  if (greeting) {
+    if (hasVisitedBefore) {
+      const returnText = greeting.dataset.return;
+      if (returnText) greeting.textContent = returnText;
+    }
+    // else: the first-visit copy is already sitting in the HTML —
+    // the correct no-JS fallback too.
+    markSeen();
+    hasVisitedBefore = true;
+  }
+
+  // ---- terminal overlay ----
+  const overlay = document.getElementById('terminal-overlay');
+  const toggle = document.getElementById('terminal-toggle');
+  const input = document.getElementById('terminal-input') as HTMLInputElement | null;
+  const output = document.getElementById('terminal-output');
+  const greetingLine = document.getElementById('terminal-greeting');
+
+  const slugsRaw = overlay?.dataset.logSlugs;
+  let logSlugs: string[] = [];
+  try {
+    logSlugs = slugsRaw ? JSON.parse(slugsRaw) : [];
+  } catch {
+    logSlugs = [];
+  }
+
+  const COMMANDS = ['help', 'log', 'now', 'stuff', 'lab', 'work', 'random', 'clear'];
+
+  function isTyping(target: EventTarget | null) {
+    const el = target as HTMLElement | null;
+    return el?.tagName === 'INPUT' || el?.tagName === 'TEXTAREA' || !!el?.isContentEditable;
+  }
+
+  function openTerminal() {
+    if (!overlay || !input) return;
+    overlay.hidden = false;
+    if (greetingLine) {
+      greetingLine.textContent = hasVisitedBefore ? '' : 'you found it.';
+    }
+    markSeen();
+    hasVisitedBefore = true;
+    if (output) output.textContent = '';
+    input.value = '';
+    input.focus();
+  }
+
+  function closeTerminal() {
+    if (!overlay || !input) return;
+    overlay.hidden = true;
+    input.blur();
+  }
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === '~' && !isTyping(e.target) && (!overlay || overlay.hidden)) {
+      e.preventDefault();
+      openTerminal();
+    } else if (e.key === 'Escape' && overlay && !overlay.hidden) {
+      closeTerminal();
+    }
+  });
+
+  toggle?.addEventListener('click', () => {
+    if (!overlay || overlay.hidden) {
+      openTerminal();
+    } else {
+      closeTerminal();
+    }
+  });
+
+  function print(line: string) {
+    if (output) output.textContent = line;
+  }
+
+  function runCommand(raw: string) {
+    const cmd = raw.trim().toLowerCase();
+    if (!cmd) return;
+
+    switch (cmd) {
+      case 'help':
+        print(COMMANDS.join('  '));
+        break;
+      case 'log':
+        window.location.href = '/log';
+        break;
+      case 'now':
+        window.location.href = '/now';
+        break;
+      case 'stuff':
+      case 'lab':
+        print(`${cmd} isn't built yet.`);
+        break;
+      case 'work':
+        window.location.href = 'https://lrod.dev';
+        break;
+      case 'random':
+        if (logSlugs.length === 0) {
+          print('nothing to pick from yet.');
+        } else {
+          const pick = logSlugs[Math.floor(Math.random() * logSlugs.length)];
+          window.location.href = `/log/${pick}`;
+        }
+        break;
+      case 'clear':
+        closeTerminal();
+        break;
+      default:
+        print(`command not found: ${cmd}`);
+    }
+  }
+
+  input?.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      const value = input.value;
+      input.value = '';
+      runCommand(value);
+    }
+  });
+</script>

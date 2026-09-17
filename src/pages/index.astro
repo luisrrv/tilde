@@ -20,6 +20,15 @@ const swatches = [
   title="tilde — type specimen"
   description="Temporary placeholder for the tilde design system. Not the real homepage."
 >
+  {/*
+    step 15 (blueprint.md §19 / §15): the localStorage first-visit
+    mechanism, wired here ahead of the real homepage (steps 17-18).
+    This greeting is the only piece of "real" homepage copy that
+    exists before then; everything else below it stays the Task 01
+    specimen content until real content lands.
+  */}
+  <p class="greeting" data-greeting data-return={`you again.\nsame as before, mostly.`}>{`someone who isn't me.\nwell, come in.`}</p>
+
   <p class="meta">
     ⚠ this is a temporary type specimen for Task 01, not the real
     homepage (blueprint.md §6). It exists so the token layer and type
@@ -73,6 +82,10 @@ const swatches = [
 </Base>
 
 <style>
+  .greeting {
+    white-space: pre-line;
+  }
+
   .swatch-list {
     list-style: none;
     margin: 0;
