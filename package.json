@@ -9,9 +9,17 @@
     "build": "astro build",
     "preview": "astro preview",
     "astro": "astro",
-    "verify:rls": "node scripts/verify-rls.mjs"
+    "verify:rls": "node scripts/verify-rls.mjs",
+    "check": "astro check"
   },
   "dependencies": {
-    "astro": "^7.3.2"
+    "@supabase/supabase-js": "^2.45.4",
+    "astro": "^7.3.2",
+    "isomorphic-dompurify": "^2.16.0",
+    "marked": "^14.1.2"
+  },
+  "devDependencies": {
+    "@astrojs/check": "^0.9.10",
+    "typescript": "^6.0.3"
   }
 }
