@@ -231,3 +231,70 @@ Per the scaffold's scope, none of this exists yet and shouldn't:
 keep-alive function, `/feed.xml`, `/404`, the terminal overlay, the
 first-visit script, real content, or any DNS change to `rodluis.com`
 (its redirect to `lrod.dev` must stay live).
+
+---
+
+## 10. Wire the publishing loop (§19 step 11)
+
+The last piece of the dynamic publishing goal (§14): right now, saving
+something in `/admin` doesn't make it live — the site is fully static
+and nothing rebuilds it automatically yet. This wires that up, plus
+the keep-alive that stops the free Supabase project from pausing.
+
+### 10.1 Create a Netlify build hook
+
+**Site settings → Build & deploy → Build hooks → Add build hook.**
+Name it something like `content-publish`, branch `task-03-webhook-keepalive`
+for now (move it to whatever branch is live once this merges). Copy
+the URL it gives you — it looks like
+`https://api.netlify.com/build_hooks/<id>` and is a bearer of sorts:
+anyone with it can trigger a rebuild, so treat it like a secret even
+though it can't read or change any data.
+
+### 10.2 Set it as an env var
+
+**Site settings → Environment variables**, add:
+
+```text
+BUILD_HOOK_URL   <the build hook URL from 10.1>
+```
+
+This is what `netlify/functions/keep-alive.ts` reads. Don't put it in
+`.env` or commit it anywhere — Netlify env vars only.
+
+### 10.3 Point Supabase's database webhooks at it
+
+**Database → Webhooks** in the Supabase dashboard, one webhook per
+table (two total):
+
+- Table `logs`, events: Insert, Update, Delete → HTTP POST →
+  the build hook URL from 10.1.
+- Table `now`, same events, same URL.
+
+No headers or auth needed — the build hook URL is the credential.
+Both tables need their own webhook; there's no way to watch both with
+one entry.
+
+### 10.4 Confirm the keep-alive function deployed
+
+After this branch deploys, check **Functions** in the Netlify site
+dashboard for `keep-alive`, scheduled `0 0 */5 * *` (every 5 days). It
+only fires on that schedule — there's no button to test it from the
+dashboard, so the real test is 10.5.
+
+### 10.5 Verify the whole loop, end to end
+
+This is Definition of done for this step — not "the webhook exists,"
+but that the loop actually runs:
+
+1. In `/admin`, publish a log entry (check the `published` box, save).
+2. Watch **Deploys** in the Netlify dashboard — a new deploy should
+   start within a few seconds, triggered by the Supabase webhook.
+3. Once it finishes (~30–60s), load `/log` and confirm the entry is
+   actually there.
+4. Do the same for a `/now` field, and confirm `/now` picks it up
+   after that deploy.
+
+If a deploy doesn't start automatically after step 1, the Supabase
+webhook (10.3) is the thing to check first — the build hook itself
+already works if you were able to trigger the earlier manual deploys.
