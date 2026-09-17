@@ -1,109 +1,71 @@
 ---
 import Base from '../layouts/Base.astro';
+import { supabase } from '../lib/supabase';
+import { renderMarkdown } from '../lib/markdown';
 
-// A swatch of every color token, read from tokens.css by name — the
-// page prints the token names, never a hex value (that stays inside
-// tokens.css, which this specimen exists to prove).
-const swatches = [
-  { name: '--bg', role: 'page background' },
-  { name: '--fg', role: 'body text' },
-  { name: '--fg-dim', role: 'metadata, dim text' },
-  { name: '--rule', role: 'separators, borders' },
-  { name: '--accent', role: 'status, focus, used sparingly' },
-  { name: '--term-bg', role: 'terminal overlay background' },
-  { name: '--term-fg', role: 'terminal overlay text' },
-  { name: '--term-dim', role: 'terminal overlay dim text' },
-];
+interface LogRow {
+  slug: string;
+  title: string | null;
+  body: string;
+  created_at: string;
+}
+
+// The homepage's only dynamic piece: the single latest published
+// entry, per §5 ("latest log entry") and the §6 tone example. Same
+// build-time, RLS-gated read as /log itself.
+const { data, error } = await supabase
+  .from('logs')
+  .select('slug, title, body, created_at')
+  .eq('published', true)
+  .order('created_at', { ascending: false })
+  .limit(1);
+
+if (error) {
+  throw new Error(`Failed to fetch latest log for homepage: ${error.message}`);
+}
+
+const latest = (data?.[0] ?? null) as LogRow | null;
+
+const dateFormatter = new Intl.DateTimeFormat('en-CA', {
+  timeZone: 'Asia/Tokyo',
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+}); // en-CA gives YYYY-MM-DD, matching §9
 ---
 
-<Base
-  title="tilde — type specimen"
-  description="Temporary placeholder for the tilde design system. Not the real homepage."
->
-  {/*
-    step 15 (blueprint.md §19 / §15): the localStorage first-visit
-    mechanism, wired here ahead of the real homepage (steps 17-18).
-    This greeting is the only piece of "real" homepage copy that
-    exists before then; everything else below it stays the Task 01
-    specimen content until real content lands.
-  */}
+<Base title="tilde" description="Personal site and notebook.">
   <p class="greeting" data-greeting data-return={`you again.\nsame as before, mostly.`}>{`someone who isn't me.\nwell, come in.`}</p>
 
-  <p class="meta">
-    ⚠ this is a temporary type specimen for Task 01, not the real
-    homepage (blueprint.md §6). It exists so the token layer and type
-    scale are reviewable on a preview URL before any real pages are built.
-  </p>
+  <div class="ascii-rule">-----------------------------------------------</div>
 
-  <hr />
-
-  <h1>tilde — design system specimen</h1>
-
-  <p class="meta">
-    this line lives inside <code>.measure</code>, capped at <code>var(--measure)</code> (64ch) — mono runs wide, so this is the comfortable reading width for the whole site.
-  </p>
+  {latest ? (
+    <section>
+      <p class="meta">latest:</p>
+      <p class="meta">
+        <time datetime={latest.created_at}>{dateFormatter.format(new Date(latest.created_at))}</time>
+      </p>
+      <div class="log-body" set:html={renderMarkdown(latest.body)} />
+      <p class="meta"><a href="/log">&rarr; more logs</a></p>
+    </section>
+  ) : (
+    <p class="meta">nothing published yet. <a href="/log">the log</a> will fill in once something is.</p>
+  )}
 
   <div class="ascii-rule">-----------------------------------------------</div>
 
-  <section>
-    <h2>type scale</h2>
-    <p style="font-size: var(--text-lg);">--text-lg — 1.125rem, page headings (not bold, letterspaced)</p>
-    <p style="font-size: var(--text-base);">--text-base — 1rem, body copy at this weight and line-height</p>
-    <p style="font-size: var(--text-sm);" class="meta">--text-sm — 0.8125rem, metadata / labels / the help hint</p>
-  </section>
+  <p class="meta">probably writing code that didn't need to exist.</p>
 
-  <div class="ascii-rule">-----------------------------------------------</div>
-
-  <section>
-    <h2>links &amp; focus</h2>
-    <p>
-      an inline <a href="#">underlined link</a> — hover or tab to it to
-      see the accent color and focus ring.
-    </p>
-  </section>
-
-  <div class="ascii-rule">-----------------------------------------------</div>
-
-  <section>
-    <h2>token swatches</h2>
-    <ul class="swatch-list">
-      {swatches.map((token) => (
-        <li class="swatch-row">
-          <span
-            class="swatch"
-            style={`background: var(${token.name}); border: 1px solid var(--rule);`}
-          ></span>
-          <code>{token.name}</code>
-          <span class="meta">— {token.role}</span>
-        </li>
-      ))}
-    </ul>
-  </section>
+  <p class="meta">work stuff &rarr; <a href="https://lrod.dev">lrod.dev</a></p>
 </Base>
 
 <style>
   .greeting {
     white-space: pre-line;
+    font-size: var(--text-lg);
   }
 
-  .swatch-list {
-    list-style: none;
-    margin: 0;
-    padding: 0;
-    display: grid;
-    gap: 0.5rem;
-  }
-
-  .swatch-row {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-  }
-
-  .swatch {
-    display: inline-block;
-    width: 1.5rem;
-    height: 1.5rem;
-    flex-shrink: 0;
+  .log-body :global(p:last-child) {
+    margin-bottom: 0.25em;
   }
 </style>
