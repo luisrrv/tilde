@@ -80,7 +80,31 @@ import Base from '../../layouts/Base.astro';
 
     <div id="tab-now" hidden>
       <h2>currently</h2>
-      <form id="now-form"></form>
+      <form id="now-form">
+        <label class="field">
+          <span class="field-label">status</span>
+          <input type="text" data-key="status" autocomplete="off" />
+        </label>
+        <label class="field">
+          <span class="field-label">listening</span>
+          <input type="text" data-key="listening" autocomplete="off" />
+        </label>
+        <label class="field">
+          <span class="field-label">playing</span>
+          <input type="text" data-key="playing" autocomplete="off" />
+        </label>
+        <label class="field">
+          <span class="field-label">watching</span>
+          <input type="text" data-key="watching" autocomplete="off" />
+        </label>
+        <label class="field">
+          <span class="field-label">learning</span>
+          <input type="text" data-key="learning" autocomplete="off" />
+        </label>
+        <div class="button-row">
+          <button type="submit">update</button>
+        </div>
+      </form>
       <p class="meta" id="now-message"></p>
     </div>
   </section>
@@ -296,9 +320,15 @@ import Base from '../../layouts/Base.astro';
 
   // ---- now form -------------------------------------------------------------
   async function loadNowForm() {
+    // The five fields are static markup in the template (see above) —
+    // not built with document.createElement — specifically so Astro's
+    // scoped <style> below actually applies to them. Elements inserted
+    // by client script never receive that scoping, which is exactly
+    // what broke this the first time (§17 note: fixed after the admin
+    // "now" tab rendered unstyled).
     const { data, error } = await sb
       .from('now')
-      .select('key, value, sort_order')
+      .select('key, value')
       .order('sort_order', { ascending: true })
       .order('key', { ascending: true });
 
@@ -307,37 +337,12 @@ import Base from '../../layouts/Base.astro';
       return;
     }
 
-    nowForm.innerHTML = '';
     nowBaseline = {};
-
     for (const row of data ?? []) {
       nowBaseline[row.key] = row.value;
-
-      const label = document.createElement('label');
-      label.className = 'field';
-
-      const span = document.createElement('span');
-      span.className = 'field-label';
-      span.textContent = row.key;
-
-      const input = document.createElement('input');
-      input.type = 'text';
-      input.value = row.value;
-      input.dataset.key = row.key;
-      input.autocomplete = 'off';
-
-      label.appendChild(span);
-      label.appendChild(input);
-      nowForm.appendChild(label);
+      const input = nowForm.querySelector<HTMLInputElement>(`input[data-key="${row.key}"]`);
+      if (input) input.value = row.value;
     }
-
-    const submitRow = document.createElement('div');
-    submitRow.className = 'button-row';
-    const submitBtn = document.createElement('button');
-    submitBtn.type = 'submit';
-    submitBtn.textContent = 'update';
-    submitRow.appendChild(submitBtn);
-    nowForm.appendChild(submitRow);
   }
 
   nowForm.addEventListener('submit', async (e) => {
