@@ -83,15 +83,15 @@ try {
       </button>
     </header>
 
-    <div class="measure">
+    <main class="measure">
       <slot />
+    </main>
 
-      <footer>
-        <p class="rule"></p>
-        <p class="under-construction">[ under construction ]</p>
-        <p class="meta">last updated: {buildDate} · best viewed with: a browser</p>
-      </footer>
-    </div>
+    <footer class="measure">
+      <p class="rule"></p>
+      <p class="under-construction">[ under construction ]</p>
+      <p class="meta">last updated: {buildDate} · best viewed with: a browser</p>
+    </footer>
 
     <div id="terminal-overlay" class="terminal-overlay" hidden data-log-slugs={JSON.stringify(logSlugs)}>
       <div class="terminal-box" role="dialog" aria-label="terminal">
@@ -132,11 +132,15 @@ try {
      stop lining up. The smaller size lives on the specific children
      that should read small instead. */
   .site-header {
+    position: sticky;
+    top: 0;
+    z-index: 20;
     display: flex;
     align-items: center;
     gap: 1rem;
     padding-block: 1rem;
     margin-bottom: 2rem;
+    background: var(--bg);
     border-bottom: 1px solid var(--rule);
   }
 
