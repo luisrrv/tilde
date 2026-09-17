@@ -18,8 +18,6 @@ html {
 body {
   margin: 0;
   min-height: 100vh;
-  display: flex;
-  flex-direction: column;
   background: var(--bg);
   color: var(--fg);
   font-family: var(--font);
@@ -27,14 +25,6 @@ body {
   line-height: var(--leading-body);
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
-}
-
-/* sticky footer: main grows to fill the viewport on short pages, so
-   the footer settles at the bottom instead of trailing right after
-   the content -- but it's still in normal flow, never position:
-   fixed, so it never overlaps content on a long page */
-main {
-  flex: 1 0 auto;
 }
 
 /* the comfortable measure, applied to whatever wraps page content */
@@ -83,16 +73,11 @@ small,
   color: var(--fg-dim);
 }
 
+/* One divider style everywhere except the header's own border -- a
+   real border (not literal dash characters, so it always spans the
+   container's full width, whatever that width is) */
 hr,
-.rule {
-  border: none;
-  border-top: 1px solid var(--rule);
-  margin: 2em 0;
-}
-
-/* a dashed section divider, distinct from .rule's solid one -- a
-   real border, not literal dash characters, so it always spans the
-   container's full width instead of a fixed, possibly-mismatched one */
+.rule,
 .ascii-rule {
   border: none;
   border-top: 1px dashed var(--rule);
