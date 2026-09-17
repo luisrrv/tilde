@@ -8,11 +8,9 @@
 -- counter was dropped, §4), so these policies need no exception, no
 -- security-definer RPC, and no rate limiting.
 --
--- >>> REPLACE '00000000-0000-0000-0000-000000000000' BELOW <<<
--- This is an obvious placeholder, not a real UUID. It must be replaced
--- with the actual Supabase auth.users UUID for the one owner account,
--- once that account exists (see SETUP.md). Until it is replaced, NO
--- authenticated user — including the real owner — can write anything.
+-- Owner UUID: the real auth.users id for the one owner account
+-- (created 2026-09-17). Not a placeholder anymore — this is the actual
+-- UUID this project's RLS policies are pinned to.
 
 alter table logs enable row level security;
 alter table now  enable row level security;
@@ -23,8 +21,8 @@ create policy "anon reads published logs"
 
 create policy "owner does everything on logs"
   on logs for all to authenticated
-  using      (auth.uid() = '00000000-0000-0000-0000-000000000000')
-  with check (auth.uid() = '00000000-0000-0000-0000-000000000000');
+  using      (auth.uid() = '2e9f8673-d8d2-4827-80f9-500879ff3b48')
+  with check (auth.uid() = '2e9f8673-d8d2-4827-80f9-500879ff3b48');
 
 create policy "anon reads now"
   on now for select to anon
@@ -32,5 +30,5 @@ create policy "anon reads now"
 
 create policy "owner does everything on now"
   on now for all to authenticated
-  using      (auth.uid() = '00000000-0000-0000-0000-000000000000')
-  with check (auth.uid() = '00000000-0000-0000-0000-000000000000');
+  using      (auth.uid() = '2e9f8673-d8d2-4827-80f9-500879ff3b48')
+  with check (auth.uid() = '2e9f8673-d8d2-4827-80f9-500879ff3b48');
