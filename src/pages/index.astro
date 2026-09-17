@@ -58,16 +58,8 @@ const dateFormatter = new Intl.DateTimeFormat('en-CA', {
 
   <p class="meta">work stuff &rarr; <a href="https://lrod.dev">lrod.dev</a></p>
 
-  {/* §4 Web 1.0 accents: a CSS-only marquee (no JS) and one restrained
-      88x31-style badge, in the format's real dimensions. Both purely
-      decorative. */}
-  <div class="marquee" aria-hidden="true">
-    <div class="marquee-track">
-      marquee tag not supported anymore. this is the tribute version.&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-      marquee tag not supported anymore. this is the tribute version.&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-    </div>
-  </div>
-
+  {/* §4 Web 1.0 accent: one restrained 88x31-style badge, in the
+      format's real dimensions. Purely decorative. */}
   <div class="badge-88x31" aria-hidden="true">
     <span>~luis</span>
     <span>since '26</span>
@@ -82,36 +74,6 @@ const dateFormatter = new Intl.DateTimeFormat('en-CA', {
 
   .log-body :global(p:last-child) {
     margin-bottom: 0.25em;
-  }
-
-  .marquee {
-    overflow: hidden;
-    border-top: 1px solid var(--rule);
-    border-bottom: 1px solid var(--rule);
-    padding: 0.4em 0;
-    margin: 1.5em 0;
-  }
-
-  .marquee-track {
-    display: inline-block;
-    white-space: nowrap;
-    font-size: var(--text-sm);
-    color: var(--fg-dim);
-  }
-
-  @media (prefers-reduced-motion: no-preference) {
-    .marquee-track {
-      animation: marquee-scroll 16s linear infinite;
-    }
-  }
-
-  @keyframes marquee-scroll {
-    from {
-      transform: translateX(0);
-    }
-    to {
-      transform: translateX(-50%);
-    }
   }
 
   .badge-88x31 {
