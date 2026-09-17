@@ -210,18 +210,24 @@ try {
   // progressive enhancement — with JS off the terminal simply never
   // opens (conventional nav still works) and the first-visit copy,
   // wherever it appears, is what everyone sees.
-  const SEEN_KEY = 'tilde:seen';
+  //
+  // Two independent flags, not one shared one: visiting the homepage
+  // and opening the terminal for the first time are separate personal
+  // milestones, and using up one shouldn't use up the other.
+  const GREETING_SEEN_KEY = 'tilde:seen-greeting';
+  const TERMINAL_SEEN_KEY = 'tilde:seen-terminal';
 
-  let hasVisitedBefore = false;
-  try {
-    hasVisitedBefore = localStorage.getItem(SEEN_KEY) === '1';
-  } catch {
-    hasVisitedBefore = false; // storage blocked — the honest fallback is "first visit"
+  function hasSeen(key: string): boolean {
+    try {
+      return localStorage.getItem(key) === '1';
+    } catch {
+      return false; // storage blocked — the honest fallback is "first visit"
+    }
   }
 
-  function markSeen() {
+  function markSeen(key: string) {
     try {
-      localStorage.setItem(SEEN_KEY, '1');
+      localStorage.setItem(key, '1');
     } catch {
       // storage blocked; nothing to persist, every visit reads as "first"
     }
@@ -230,14 +236,13 @@ try {
   // ---- first-visit greeting swap, wherever [data-greeting] appears ----
   const greeting = document.querySelector<HTMLElement>('[data-greeting]');
   if (greeting) {
-    if (hasVisitedBefore) {
+    if (hasSeen(GREETING_SEEN_KEY)) {
       const returnText = greeting.dataset.return;
       if (returnText) greeting.textContent = returnText;
     }
     // else: the first-visit copy is already sitting in the HTML —
     // the correct no-JS fallback too.
-    markSeen();
-    hasVisitedBefore = true;
+    markSeen(GREETING_SEEN_KEY);
   }
 
   // ---- terminal overlay ----
@@ -266,10 +271,9 @@ try {
     if (!overlay || !input) return;
     overlay.hidden = false;
     if (greetingLine) {
-      greetingLine.textContent = hasVisitedBefore ? '' : 'you found it.';
+      greetingLine.textContent = hasSeen(TERMINAL_SEEN_KEY) ? '' : 'you found it.';
     }
-    markSeen();
-    hasVisitedBefore = true;
+    markSeen(TERMINAL_SEEN_KEY);
     if (output) output.textContent = '';
     input.value = '';
     input.focus();
