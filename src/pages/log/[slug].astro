@@ -1,0 +1,64 @@
+---
+import Base from '../../layouts/Base.astro';
+import { supabase } from '../../lib/supabase';
+import { renderMarkdown } from '../../lib/markdown';
+
+interface LogRow {
+  slug: string;
+  title: string | null;
+  body: string;
+  tags: string[];
+  created_at: string;
+}
+
+// output: 'static' means every dynamic route must be known at build
+// time — no SSR fallback for a slug that doesn't exist (blueprint.md
+// §10). Only published entries get a path, so an unpublished slug is a
+// real 404, not a preview leak.
+export async function getStaticPaths() {
+  const { data, error } = await supabase
+    .from('logs')
+    .select('slug, title, body, tags, created_at')
+    .eq('published', true);
+
+  if (error) {
+    throw new Error(`Failed to fetch logs for getStaticPaths: ${error.message}`);
+  }
+
+  return ((data ?? []) as LogRow[]).map((entry) => ({
+    params: { slug: entry.slug },
+    props: { entry },
+  }));
+}
+
+interface Props {
+  entry: LogRow;
+}
+
+const { entry } = Astro.props;
+
+const dateFormatter = new Intl.DateTimeFormat('en-CA', {
+  timeZone: 'Asia/Tokyo',
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+});
+
+const pageTitle = entry.title ? `${entry.title} — tilde` : `${entry.slug} — tilde`;
+const description = entry.body.slice(0, 140);
+---
+
+<Base title={pageTitle} description={description}>
+  <p class="meta"><a href="/log">&larr; log</a></p>
+
+  <article>
+    <p class="meta">
+      <time datetime={entry.created_at}>{dateFormatter.format(new Date(entry.created_at))}</time>
+    </p>
+    {entry.title && <h1>{entry.title}</h1>}
+    <div class="log-body" set:html={renderMarkdown(entry.body)} />
+    {entry.tags.length > 0 && (
+      <p class="meta">{entry.tags.map((t) => `#${t}`).join(' ')}</p>
+    )}
+  </article>
+</Base>

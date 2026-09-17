@@ -1,0 +1,73 @@
+---
+import Base from '../../layouts/Base.astro';
+import { supabase } from '../../lib/supabase';
+import { renderMarkdown } from '../../lib/markdown';
+
+interface LogRow {
+  slug: string;
+  title: string | null;
+  body: string;
+  tags: string[];
+  created_at: string;
+}
+
+// Anon-key read, RLS-gated to published rows only (blueprint.md §13) —
+// this is a build-time fetch, so an entry saved after this build won't
+// appear until the next rebuild (the webhook in step 11 handles that).
+const { data, error } = await supabase
+  .from('logs')
+  .select('slug, title, body, tags, created_at')
+  .eq('published', true)
+  .order('created_at', { ascending: false });
+
+if (error) {
+  throw new Error(`Failed to fetch logs: ${error.message}`);
+}
+
+const entries = (data ?? []) as LogRow[];
+
+const dateFormatter = new Intl.DateTimeFormat('en-CA', {
+  timeZone: 'Asia/Tokyo',
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+}); // en-CA gives YYYY-MM-DD, matching the §9 example format
+---
+
+<Base title="log — tilde" description="Short, chronological notebook entries.">
+  <h1>log</h1>
+
+  {entries.length === 0 && (
+    <p class="meta">nothing published yet.</p>
+  )}
+
+  {entries.map((entry, i) => (
+    <>
+      <article class="log-entry">
+        <p class="meta">
+          <a href={`/log/${entry.slug}`}>
+            <time datetime={entry.created_at}>{dateFormatter.format(new Date(entry.created_at))}</time>
+          </a>
+          {entry.title && <> — {entry.title}</>}
+        </p>
+        <div class="log-body" set:html={renderMarkdown(entry.body)} />
+        {entry.tags.length > 0 && (
+          <p class="meta log-tags">{entry.tags.map((t) => `#${t}`).join(' ')}</p>
+        )}
+      </article>
+      {i < entries.length - 1 && <div class="ascii-rule">-----------------------------------------------</div>}
+    </>
+  ))}
+</Base>
+
+<style>
+  .log-entry {
+    margin-bottom: 1.5em;
+  }
+  .log-body :global(p:last-child) {
+    margin-bottom: 0.25em;
+  }
+  .log-tags {
+    margin-top: 0.5em;
+  }
+</style>
