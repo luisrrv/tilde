@@ -88,6 +88,7 @@ try {
 
       <footer>
         <p class="rule"></p>
+        <p class="under-construction">[ under construction ]</p>
         <p class="meta">last updated: {buildDate} · best viewed with: a browser</p>
       </footer>
     </div>
@@ -115,6 +116,16 @@ try {
 </html>
 
 <style>
+  .under-construction {
+    display: inline-block;
+    margin: 0 0 0.5em;
+    padding: 0.15em 0.5em;
+    border: 1px dashed var(--rule);
+    color: var(--fg-dim);
+    font-size: var(--text-sm);
+    letter-spacing: 0.05em;
+  }
+
   .site-header {
     display: flex;
     align-items: center;
