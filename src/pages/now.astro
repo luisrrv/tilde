@@ -1,0 +1,128 @@
+---
+import Base from '../layouts/Base.astro';
+import { supabase } from '../lib/supabase';
+
+interface NowRow {
+  key: string;
+  value: string;
+  sort_order: number;
+  updated_at: string;
+}
+
+// §11's reference query also filters `updated_at > now() - interval '8
+// weeks'`, but that filter must NOT run here: a build-time cutoff would
+// bake in "now" at build time, and a page that isn't rebuilt for a
+// while would keep showing a field that's since gone stale (blueprint
+// §5's whole argument for computing the hide in the browser instead).
+// So this only drops genuinely empty fields — a static, not
+// time-dependent, fact — and leaves the 8-week hide to the client
+// script below.
+const { data, error } = await supabase
+  .from('now')
+  .select('key, value, sort_order, updated_at')
+  .neq('value', '')
+  .order('sort_order', { ascending: true })
+  .order('key', { ascending: true });
+
+if (error) {
+  throw new Error(`Failed to fetch now: ${error.message}`);
+}
+
+const fields = (data ?? []) as NowRow[];
+
+const dateFormatter = new Intl.DateTimeFormat('en-CA', {
+  timeZone: 'Asia/Tokyo',
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+});
+---
+
+<Base title="now — tilde" description="What I'm currently up to.">
+  <h1>now</h1>
+
+  <p class="meta" id="now-empty" style={fields.length === 0 ? '' : 'display:none;'}>
+    nothing current to report right now.
+  </p>
+
+  <dl class="now-list" id="now-list">
+    {fields.map((field) => (
+      <div class="now-field" data-updated={field.updated_at}>
+        <dt>{field.key}</dt>
+        <dd>{field.value}</dd>
+        <p class="meta now-updated">
+          last updated:
+          <time datetime={field.updated_at}>{dateFormatter.format(new Date(field.updated_at))}</time>
+        </p>
+      </div>
+    ))}
+  </dl>
+</Base>
+
+<script>
+  // The third and last piece of the site's client-JS budget (§3):
+  // turns each field's absolute timestamp into a relative one, and
+  // hides anything untouched for more than eight weeks. Progressive
+  // enhancement — with JS off, visitors just see the real dates above,
+  // which is honest (§17 principle 10) rather than a stale "2d ago".
+  const EIGHT_WEEKS_MS = 8 * 7 * 24 * 60 * 60 * 1000;
+
+  function relativeLabel(updated: Date, now: Date): string {
+    const diffMs = now.getTime() - updated.getTime();
+    const diffDays = Math.floor(diffMs / (24 * 60 * 60 * 1000));
+
+    if (diffDays <= 0) return 'today';
+    if (diffDays === 1) return '1d ago';
+    if (diffDays < 7) return `${diffDays}d ago`;
+
+    const diffWeeks = Math.floor(diffDays / 7);
+    return diffWeeks === 1 ? '1w ago' : `${diffWeeks}w ago`;
+  }
+
+  const now = new Date();
+  const fieldEls = document.querySelectorAll<HTMLElement>('.now-field[data-updated]');
+  let visibleCount = fieldEls.length;
+
+  fieldEls.forEach((el) => {
+    const updatedRaw = el.dataset.updated;
+    if (!updatedRaw) return;
+    const updated = new Date(updatedRaw);
+
+    if (now.getTime() - updated.getTime() > EIGHT_WEEKS_MS) {
+      el.remove();
+      visibleCount -= 1;
+      return;
+    }
+
+    const timeEl = el.querySelector('time');
+    if (timeEl) {
+      timeEl.textContent = relativeLabel(updated, now);
+    }
+  });
+
+  if (visibleCount === 0) {
+    const empty = document.getElementById('now-empty');
+    if (empty) empty.style.display = '';
+  }
+</script>
+
+<style>
+  .now-list {
+    margin: 0;
+  }
+  .now-field {
+    margin-bottom: 1.5em;
+  }
+  .now-field dt {
+    font-size: var(--text-sm);
+    color: var(--fg-dim);
+    text-transform: lowercase;
+  }
+  .now-field dd {
+    margin: 0.15em 0 0.25em;
+    font-size: var(--text-base);
+  }
+  .now-updated {
+    margin: 0;
+  }
+</style>
