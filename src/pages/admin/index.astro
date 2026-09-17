@@ -1,0 +1,510 @@
+---
+import Base from '../../layouts/Base.astro';
+---
+
+<Base title="admin — tilde" description="Private publishing interface.">
+  <p class="meta">rodluis admin</p>
+
+  <div id="admin-status" class="meta">checking session…</div>
+
+  <section id="login-panel" hidden>
+    <div class="ascii-rule">-----------------------------------------------</div>
+    <form id="login-form">
+      <label class="field">
+        <span class="field-label">email</span>
+        <input type="email" id="login-email" required autocomplete="email" />
+      </label>
+      <button type="submit">send magic link</button>
+      <p class="meta" id="login-message"></p>
+    </form>
+  </section>
+
+  <section id="app-panel" hidden>
+    <div class="ascii-rule">-----------------------------------------------</div>
+
+    <nav class="tabs">
+      <button type="button" class="tab-btn" data-tab="logs" aria-current="true">logs</button>
+      <button type="button" class="tab-btn" data-tab="now">now</button>
+      <button type="button" id="logout-btn">logout</button>
+    </nav>
+
+    <div class="ascii-rule">-----------------------------------------------</div>
+
+    <div id="tab-logs">
+      <h2 id="log-form-heading">new log</h2>
+      <form id="log-form">
+        <label class="field">
+          <span class="field-label">title</span>
+          <input type="text" id="log-title" autocomplete="off" />
+          <span class="meta">optional</span>
+        </label>
+
+        <label class="field">
+          <span class="field-label">slug</span>
+          <input type="text" id="log-slug" autocomplete="off" />
+          <span class="meta" id="slug-hint">auto</span>
+        </label>
+
+        <label class="field">
+          <span class="field-label">body</span>
+          <textarea id="log-body" rows="8" required></textarea>
+          <span class="meta">markdown — single newlines become line breaks</span>
+        </label>
+
+        <label class="field">
+          <span class="field-label">tags</span>
+          <input type="text" id="log-tags" autocomplete="off" />
+          <span class="meta">comma separated, no #</span>
+        </label>
+
+        <label class="field field-checkbox">
+          <input type="checkbox" id="log-published" />
+          <span class="field-label">published</span>
+        </label>
+
+        <div class="button-row">
+          <button type="submit">save</button>
+          <button type="button" id="log-new-btn">new entry</button>
+        </div>
+        <p class="meta" id="log-message"></p>
+      </form>
+
+      <h3>preview</h3>
+      <div id="log-preview" class="log-body preview-box"></div>
+
+      <div class="ascii-rule">-----------------------------------------------</div>
+
+      <h3>entries</h3>
+      <ul id="log-list" class="plain-list"></ul>
+    </div>
+
+    <div id="tab-now" hidden>
+      <h2>currently</h2>
+      <form id="now-form"></form>
+      <p class="meta" id="now-message"></p>
+    </div>
+  </section>
+</Base>
+
+<script>
+  import { createBrowserSupabaseClient } from '../../lib/supabase';
+  import { renderMarkdown } from '../../lib/markdown';
+
+  const sb = createBrowserSupabaseClient();
+
+  // ---- element refs ----------------------------------------------------
+  const statusEl = document.getElementById('admin-status')!;
+  const loginPanel = document.getElementById('login-panel')!;
+  const appPanel = document.getElementById('app-panel')!;
+  const loginForm = document.getElementById('login-form') as HTMLFormElement;
+  const loginEmail = document.getElementById('login-email') as HTMLInputElement;
+  const loginMessage = document.getElementById('login-message')!;
+  const logoutBtn = document.getElementById('logout-btn')!;
+
+  const tabButtons = Array.from(document.querySelectorAll<HTMLButtonElement>('.tab-btn'));
+  const tabLogs = document.getElementById('tab-logs')!;
+  const tabNow = document.getElementById('tab-now')!;
+
+  const logForm = document.getElementById('log-form') as HTMLFormElement;
+  const logFormHeading = document.getElementById('log-form-heading')!;
+  const titleInput = document.getElementById('log-title') as HTMLInputElement;
+  const slugInput = document.getElementById('log-slug') as HTMLInputElement;
+  const slugHint = document.getElementById('slug-hint')!;
+  const bodyInput = document.getElementById('log-body') as HTMLTextAreaElement;
+  const tagsInput = document.getElementById('log-tags') as HTMLInputElement;
+  const publishedInput = document.getElementById('log-published') as HTMLInputElement;
+  const logMessage = document.getElementById('log-message')!;
+  const logNewBtn = document.getElementById('log-new-btn')!;
+  const logPreview = document.getElementById('log-preview')!;
+  const logList = document.getElementById('log-list')!;
+
+  const nowForm = document.getElementById('now-form') as HTMLFormElement;
+  const nowMessage = document.getElementById('now-message')!;
+
+  // ---- state -------------------------------------------------------------
+  let editingId: string | null = null;
+  let editingWasPublished = false;
+  let slugTouchedByUser = false;
+  let nowBaseline: Record<string, string> = {};
+
+  // ---- helpers -------------------------------------------------------------
+  function slugify(input: string): string {
+    return input
+      .toLowerCase()
+      .trim()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '');
+  }
+
+  function todaySlugBase(): string {
+    return new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'Asia/Tokyo',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    }).format(new Date());
+  }
+
+  async function resolveSlug(base: string, excludeId: string | null): Promise<string> {
+    let query = sb.from('logs').select('id, slug').like('slug', `${base}%`);
+    const { data, error } = await query;
+    if (error) throw error;
+
+    const taken = new Set(
+      (data ?? []).filter((row: any) => row.id !== excludeId).map((row: any) => row.slug as string)
+    );
+
+    if (!taken.has(base)) return base;
+    let n = 2;
+    while (taken.has(`${base}-${n}`)) n += 1;
+    return `${base}-${n}`;
+  }
+
+  function resetLogForm() {
+    editingId = null;
+    editingWasPublished = false;
+    slugTouchedByUser = false;
+    logFormHeading.textContent = 'new log';
+    logForm.reset();
+    slugInput.disabled = false;
+    slugHint.textContent = 'auto';
+    updatePreview();
+  }
+
+  function updatePreview() {
+    logPreview.innerHTML = bodyInput.value ? renderMarkdown(bodyInput.value) : '';
+  }
+
+  async function refreshLogList() {
+    const { data, error } = await sb
+      .from('logs')
+      .select('id, slug, title, published, created_at')
+      .order('created_at', { ascending: false })
+      .limit(30);
+
+    if (error) {
+      logList.innerHTML = `<li class="meta">failed to load entries: ${error.message}</li>`;
+      return;
+    }
+
+    logList.innerHTML = '';
+    for (const row of data ?? []) {
+      const li = document.createElement('li');
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'log-list-item';
+      const label = row.title ? row.title : row.slug;
+      btn.textContent = `${row.published ? '●' : '○'} ${label} — ${row.slug}`;
+      btn.addEventListener('click', () => loadEntry(row.id));
+      li.appendChild(btn);
+      logList.appendChild(li);
+    }
+    if ((data ?? []).length === 0) {
+      logList.innerHTML = '<li class="meta">no entries yet.</li>';
+    }
+  }
+
+  async function loadEntry(id: string) {
+    const { data, error } = await sb.from('logs').select('*').eq('id', id).single();
+    if (error || !data) {
+      logMessage.textContent = `failed to load entry: ${error?.message ?? 'not found'}`;
+      return;
+    }
+    editingId = data.id;
+    editingWasPublished = data.published;
+    slugTouchedByUser = true; // never auto-regenerate an existing slug
+    logFormHeading.textContent = `editing: ${data.slug}`;
+    titleInput.value = data.title ?? '';
+    slugInput.value = data.slug;
+    // §11: once published, a slug is immutable.
+    slugInput.disabled = data.published;
+    slugHint.textContent = data.published ? 'locked (published)' : 'manual';
+    bodyInput.value = data.body;
+    tagsInput.value = (data.tags ?? []).join(', ');
+    publishedInput.checked = data.published;
+    logMessage.textContent = '';
+    updatePreview();
+    window.scrollTo({ top: logForm.offsetTop, behavior: 'smooth' });
+  }
+
+  // ---- log form wiring -------------------------------------------------------------
+  bodyInput.addEventListener('input', updatePreview);
+
+  titleInput.addEventListener('input', () => {
+    if (slugTouchedByUser || editingId) return;
+    const base = titleInput.value.trim() ? slugify(titleInput.value) : todaySlugBase();
+    slugInput.value = base;
+  });
+
+  slugInput.addEventListener('input', () => {
+    slugTouchedByUser = true;
+  });
+
+  logNewBtn.addEventListener('click', resetLogForm);
+
+  logForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    logMessage.textContent = 'saving…';
+
+    const body = bodyInput.value.trim();
+    if (!body) {
+      logMessage.textContent = 'body is required.';
+      return;
+    }
+
+    const title = titleInput.value.trim() || null;
+    const tags = tagsInput.value
+      .split(',')
+      .map((t) => t.trim())
+      .filter(Boolean);
+    const published = publishedInput.checked;
+
+    try {
+      if (editingId) {
+        const update: Record<string, unknown> = { title, body, tags, published };
+        // slug field is disabled (unchangeable) once published, so only
+        // send it when it was actually editable.
+        if (!slugInput.disabled) update.slug = slugInput.value.trim();
+
+        const { error } = await sb.from('logs').update(update).eq('id', editingId);
+        if (error) throw error;
+      } else {
+        const rawSlug = slugInput.value.trim() || todaySlugBase();
+        const slug = await resolveSlug(slugify(rawSlug) || todaySlugBase(), null);
+        const { data, error } = await sb
+          .from('logs')
+          .insert({ title, body, tags, published, slug })
+          .select()
+          .single();
+        if (error) throw error;
+        editingId = data.id;
+        editingWasPublished = data.published;
+        slugInput.value = data.slug;
+      }
+
+      logMessage.textContent = 'saved.';
+      if (published && !editingWasPublished) {
+        slugInput.disabled = true;
+        slugHint.textContent = 'locked (published)';
+        editingWasPublished = true;
+      }
+      await refreshLogList();
+    } catch (err: any) {
+      logMessage.textContent = `save failed: ${err.message ?? err}`;
+    }
+  });
+
+  // ---- now form -------------------------------------------------------------
+  async function loadNowForm() {
+    const { data, error } = await sb
+      .from('now')
+      .select('key, value, sort_order')
+      .order('sort_order', { ascending: true })
+      .order('key', { ascending: true });
+
+    if (error) {
+      nowMessage.textContent = `failed to load: ${error.message}`;
+      return;
+    }
+
+    nowForm.innerHTML = '';
+    nowBaseline = {};
+
+    for (const row of data ?? []) {
+      nowBaseline[row.key] = row.value;
+
+      const label = document.createElement('label');
+      label.className = 'field';
+
+      const span = document.createElement('span');
+      span.className = 'field-label';
+      span.textContent = row.key;
+
+      const input = document.createElement('input');
+      input.type = 'text';
+      input.value = row.value;
+      input.dataset.key = row.key;
+      input.autocomplete = 'off';
+
+      label.appendChild(span);
+      label.appendChild(input);
+      nowForm.appendChild(label);
+    }
+
+    const submitRow = document.createElement('div');
+    submitRow.className = 'button-row';
+    const submitBtn = document.createElement('button');
+    submitBtn.type = 'submit';
+    submitBtn.textContent = 'update';
+    submitRow.appendChild(submitBtn);
+    nowForm.appendChild(submitRow);
+  }
+
+  nowForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    nowMessage.textContent = 'saving…';
+
+    // §12's "one-button trap": only fields whose value actually changed
+    // get written, so `updated_at` is never rewritten on an unchanged
+    // field. A blanket upsert of all five would silently destroy the
+    // freshness data the eight-week hide (§5) depends on.
+    const inputs = Array.from(nowForm.querySelectorAll<HTMLInputElement>('input[data-key]'));
+    const changed = inputs.filter((input) => input.value !== nowBaseline[input.dataset.key!]);
+
+    if (changed.length === 0) {
+      nowMessage.textContent = 'nothing changed.';
+      return;
+    }
+
+    try {
+      for (const input of changed) {
+        const key = input.dataset.key!;
+        const { error } = await sb
+          .from('now')
+          .update({ value: input.value, updated_at: new Date().toISOString() })
+          .eq('key', key);
+        if (error) throw error;
+        nowBaseline[key] = input.value;
+      }
+      nowMessage.textContent = `updated ${changed.length} field(s).`;
+    } catch (err: any) {
+      nowMessage.textContent = `save failed: ${err.message ?? err}`;
+    }
+  });
+
+  // ---- tabs -------------------------------------------------------------
+  tabButtons.forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const tab = btn.dataset.tab;
+      tabButtons.forEach((b) => b.removeAttribute('aria-current'));
+      btn.setAttribute('aria-current', 'true');
+      tabLogs.hidden = tab !== 'logs';
+      tabNow.hidden = tab !== 'now';
+    });
+  });
+
+  // ---- auth -------------------------------------------------------------
+  async function showAuthenticated() {
+    statusEl.textContent = '> authenticated';
+    loginPanel.hidden = true;
+    appPanel.hidden = false;
+    resetLogForm();
+    await Promise.all([refreshLogList(), loadNowForm()]);
+  }
+
+  function showLoggedOut() {
+    statusEl.textContent = 'not signed in';
+    loginPanel.hidden = false;
+    appPanel.hidden = true;
+  }
+
+  loginForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    loginMessage.textContent = 'sending…';
+    const { error } = await sb.auth.signInWithOtp({
+      email: loginEmail.value.trim(),
+      options: { emailRedirectTo: `${window.location.origin}/admin` },
+    });
+    loginMessage.textContent = error ? `error: ${error.message}` : 'check your email for the link.';
+  });
+
+  logoutBtn.addEventListener('click', async () => {
+    await sb.auth.signOut();
+    showLoggedOut();
+  });
+
+  sb.auth.onAuthStateChange((_event, session) => {
+    if (session) {
+      showAuthenticated();
+    } else {
+      showLoggedOut();
+    }
+  });
+
+  const {
+    data: { session },
+  } = await sb.auth.getSession();
+
+  if (session) {
+    await showAuthenticated();
+  } else {
+    showLoggedOut();
+  }
+</script>
+
+<style>
+  .field {
+    display: block;
+    margin-bottom: 1em;
+  }
+  .field-label {
+    display: block;
+    font-size: var(--text-sm);
+    color: var(--fg-dim);
+    margin-bottom: 0.25em;
+  }
+  .field input[type='text'],
+  .field input[type='email'],
+  .field textarea {
+    width: 100%;
+    font-family: var(--font);
+    font-size: var(--text-base);
+    color: var(--fg);
+    background: var(--bg);
+    border: 1px solid var(--rule);
+    padding: 0.5em;
+  }
+  .field-checkbox {
+    display: flex;
+    align-items: center;
+    gap: 0.5em;
+  }
+  .field-checkbox .field-label {
+    margin-bottom: 0;
+  }
+  .button-row {
+    display: flex;
+    gap: 0.75em;
+    flex-wrap: wrap;
+  }
+  button {
+    font-family: var(--font);
+    font-size: var(--text-sm);
+    color: var(--fg);
+    background: var(--bg);
+    border: 1px solid var(--rule);
+    padding: 0.5em 0.9em;
+    cursor: pointer;
+  }
+  button:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+  .tabs {
+    display: flex;
+    gap: 0.5em;
+    flex-wrap: wrap;
+  }
+  .tab-btn[aria-current='true'] {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+  #logout-btn {
+    margin-left: auto;
+  }
+  .preview-box {
+    border: 1px dashed var(--rule);
+    padding: 0.75em;
+    min-height: 3em;
+  }
+  .plain-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+  .log-list-item {
+    width: 100%;
+    text-align: left;
+    margin-bottom: 0.35em;
+  }
+</style>
