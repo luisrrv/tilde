@@ -55,7 +55,7 @@ const dateFormatter = new Intl.DateTimeFormat('en-CA', {
           <p class="meta log-tags">{entry.tags.map((t) => `#${t}`).join(' ')}</p>
         )}
       </article>
-      {i < entries.length - 1 && <div class="ascii-rule">-----------------------------------------------</div>}
+      {i < entries.length - 1 && <div class="ascii-rule"></div>}
     </>
   ))}
 </Base>

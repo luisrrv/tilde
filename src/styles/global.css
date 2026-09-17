@@ -80,14 +80,13 @@ hr,
   margin: 2em 0;
 }
 
-/* an ASCII-style separator as an alternative to <hr> */
+/* a dashed section divider, distinct from .rule's solid one -- a
+   real border, not literal dash characters, so it always spans the
+   container's full width instead of a fixed, possibly-mismatched one */
 .ascii-rule {
-  color: var(--rule);
-  font-size: var(--text-sm);
-  letter-spacing: 0;
-  white-space: pre;
+  border: none;
+  border-top: 1px dashed var(--rule);
   margin: 2em 0;
-  user-select: none;
 }
 
 code,

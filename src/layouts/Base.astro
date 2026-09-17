@@ -126,13 +126,17 @@ try {
     letter-spacing: 0.05em;
   }
 
+  /* No font-size here: .measure's 64ch must compute against the same
+     font-size as the body content div below it, or the two boxes'
+     "same 64ch" resolve to different pixel widths and their edges
+     stop lining up. The smaller size lives on the specific children
+     that should read small instead. */
   .site-header {
     display: flex;
     align-items: center;
     gap: 1rem;
     padding-block: 1rem;
     border-bottom: 1px solid var(--rule);
-    font-size: var(--text-sm);
   }
 
   .site-header .wordmark {
@@ -144,10 +148,12 @@ try {
     display: flex;
     gap: 0.85rem;
     margin-right: auto;
+    font-size: var(--text-sm);
   }
 
   .help-tap {
     font: inherit;
+    font-size: var(--text-sm);
     color: var(--fg-dim);
     background: none;
     border: none;
