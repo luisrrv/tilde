@@ -9,6 +9,12 @@ interface Props {
 
 const { title, description } = Astro.props;
 
+// Absolute URLs for OG/twitter tags -- Astro.site is configured in
+// astro.config.mjs (currently rodluis.com; will point at whatever
+// domain is live post-cutover, blueprint.md §19 step 19).
+const canonicalUrl = new URL(Astro.url.pathname, Astro.site).href;
+const ogImageUrl = new URL('/og-image.png', Astro.site).href;
+
 // The footer shows the *build* time, not any content's timestamp — see
 // §4 of blueprint.md. It doubles as the keep-alive's liveness signal:
 // if this date stops advancing, the scheduled rebuild has stopped
@@ -36,11 +42,23 @@ try {
     <title>{title}</title>
     <meta name="description" content={description} />
 
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="canonical" href={canonicalUrl} />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={canonicalUrl} />
+    <meta property="og:image" content={ogImageUrl} />
+
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={title} />
+    <meta name="twitter:description" content={description} />
+    <meta name="twitter:image" content={ogImageUrl} />
+
     {/*
-      Favicon, OG/twitter tags, and sitemap are real site metadata
-      (blueprint §5) but are not part of this task's scope — no
-      favicon asset exists yet. Added when the real pages and content
-      are built.
+      /sitemap.html (blueprint §4/§5) is a small remaining piece of
+      site metadata, not yet built.
     */}
   </head>
   <body>
