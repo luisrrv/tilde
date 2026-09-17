@@ -19,7 +19,7 @@ export async function GET(context) {
   const entries = data ?? [];
 
   return rss({
-    title: 'tilde — log',
+    title: '~luis — log',
     description: 'Short, chronological notebook entries.',
     site: context.site,
     items: entries.map((entry) => ({
