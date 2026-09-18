@@ -27,10 +27,101 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-/* the comfortable measure, applied to whatever wraps page content */
+/* the "desktop": a slightly different, subtly dotted surface behind
+   the window, so the window reads as a surface sitting on top of
+   something rather than just... more white page. Present at every
+   width -- even on a phone there's a sliver of it around the edges. */
+body {
+  background-color: var(--bg-desktop);
+  background-image: radial-gradient(var(--rule-desktop) 1px, transparent 1px);
+  background-size: 22px 22px;
+}
+
+/* the "window": a small margin on every side, always, so the frame
+   and the desktop behind it are visible even on a phone -- just at a
+   smaller scale than desktop. `width: min(...)` (rather than
+   max-width) is what keeps a real gap on narrow screens too: max-width
+   alone only bites once the viewport exceeds it, but this shrinks the
+   box itself by the margin at every width, then caps it at --measure
+   once there's room to spare.
+
+   It's a flex column with a height floor at every width, not just
+   above the breakpoint: a short page (a single short log entry, say)
+   would otherwise leave the window itself short, with the footer
+   sitting right under the content instead of anchored to the bottom
+   of the window -- which reads as broken on a tall phone screen. Below
+   the breakpoint this is a *minimum*, so a long page still grows the
+   window (and the whole page still scrolls normally); above it, the
+   media query pins an exact height instead. */
+.page-frame {
+  width: min(calc(100% - 24px), var(--measure));
+  min-height: calc(100vh - 24px);
+  margin: 12px auto;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg); /* the "paper", opaque over the dotted desktop */
+  border: 1px solid var(--fg);
+  box-shadow: 6px 6px 0 var(--fg);
+}
+
+.page-frame main {
+  flex: 1;
+}
+
+.page-frame .site-header,
+.page-frame footer {
+  flex: none;
+}
+
+@media (min-width: 600px) {
+  /* above this width the window locks to the viewport and only its
+     own content scrolls -- like a real terminal window. Below it, the
+     frame is just decoration on top of an otherwise normal, scrolling
+     page (mobile viewport-height quirks make the locked version more
+     trouble than it's worth at that size).
+
+     body becomes a (row-direction, NOT column) flex container so the
+     frame can be centered vertically too -- margin:auto only centers
+     horizontally in normal flow, vertical auto-margins need a flex/grid
+     parent. Row direction on purpose: a column body previously broke
+     horizontal centering (it disables the stretch that made the child's
+     shrink-to-fit width sit in the middle); row + explicit align/justify
+     avoids that regression while still centering on both axes. */
+  html, body {
+    height: 100%;
+    overflow: hidden;
+  }
+
+  body {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .page-frame {
+    margin: 0;
+    min-height: 0; /* the mobile floor no longer applies -- height below is exact */
+    /* same shape as --measure capping the width: fill the viewport (minus
+       the same breathing room as before) up to a point, then stop growing
+       -- so on a very tall screen the window doesn't stretch into one
+       giant pane, it just sits centered with desktop visible above/below. */
+    height: min(calc(100vh - 5rem - 2px), var(--terminal-max-height));
+    overflow: hidden; /* the window's own edges stay put; only main scrolls */
+  }
+
+  .page-frame main {
+    overflow-y: auto;
+    min-height: 0; /* flex items default to a content-based min-height, which
+                       can stop overflow-y:auto from ever engaging -- pin it
+                       to 0 so main always shrinks to the space it's given
+                       instead of pushing .page-frame taller than its cap */
+  }
+}
+
+/* the inner text inset, applied per-section (not on .page-frame itself)
+   so the header's background can still span edge-to-edge like a
+   titlebar while body text stays comfortably inset */
 .measure {
-  max-width: var(--measure);
-  margin-inline: auto;
   padding-inline: 1.25rem;
 }
 

@@ -66,39 +66,41 @@ try {
     there's a sitemap, for what it's worth. /sitemap.html
   -->
   <body>
-    <header class="site-header measure">
-      <a href="/" class="wordmark" aria-label="home">~</a>
-      <nav>
-        <a href="/log">log</a>
-        <a href="/now">now</a>
-      </nav>
-      <button
-        type="button"
-        id="terminal-toggle"
-        class="help-tap"
-        aria-label="open terminal"
-        title="~ works too, if you have a keyboard"
-      >
-        [ ? ]
-      </button>
-    </header>
+    <div class="page-frame">
+      <header class="site-header measure">
+        <a href="/" class="wordmark" aria-label="home">~</a>
+        <nav>
+          <a href="/log">log</a>
+          <a href="/now">now</a>
+        </nav>
+        <button
+          type="button"
+          id="terminal-toggle"
+          class="help-tap"
+          aria-label="open terminal"
+          title="~ works too, if you have a keyboard"
+        >
+          [ ? ]
+        </button>
+      </header>
 
-    <main class="measure">
-      <slot />
-    </main>
+      <main class="measure">
+        <slot />
+      </main>
 
-    <footer class="measure">
-      <p class="rule"></p>
-      <p class="under-construction">[ under construction ]</p>
-      <p class="meta">last updated: {buildDate} · best viewed with: a browser</p>
-    </footer>
+      <footer class="measure">
+        <p class="rule"></p>
+        <p class="under-construction">[ under construction ]</p>
+        <p class="meta">last updated: {buildDate} · best viewed with: a browser</p>
+      </footer>
+    </div>
 
     <div id="terminal-overlay" class="terminal-overlay" hidden data-log-slugs={JSON.stringify(logSlugs)}>
       <div class="terminal-box" role="dialog" aria-label="terminal">
         <p class="terminal-hint" id="terminal-greeting"></p>
         <p class="terminal-hint">type `help`.</p>
         <div class="terminal-line">
-          <span class="terminal-prompt">&gt;</span>
+          <span class="terminal-prompt">user@rodluis:~$</span>
           <input
             type="text"
             id="terminal-input"
@@ -141,7 +143,7 @@ try {
     padding-block: 1rem;
     margin-bottom: 2rem;
     background: var(--bg);
-    border-bottom: 1px solid var(--rule);
+    border-bottom: 1px solid var(--fg);
   }
 
   .site-header .wordmark {
@@ -194,10 +196,13 @@ try {
     max-width: var(--measure);
     background: var(--term-bg);
     color: var(--term-fg);
-    border-radius: 4px;
     padding: 0.85rem 1rem;
     font-size: var(--text-sm);
-    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.25);
+    border: 1px solid var(--term-accent); /* a dark shadow reads as mud
+                                               against the already-dark box,
+                                               so no shadow here -- the
+                                               brightened accent border alone
+                                               gives it a crisp, visible edge */
   }
 
   .terminal-hint {
@@ -217,6 +222,7 @@ try {
 
   .terminal-prompt {
     color: var(--term-dim);
+    white-space: nowrap; /* "user@rodluis:~$" shouldn't wrap onto its own line at narrow widths */
   }
 
   .terminal-input {
