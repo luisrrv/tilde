@@ -150,6 +150,50 @@ a:focus-visible {
   text-decoration-color: currentColor;
 }
 
+/* inside a log entry's own markdown content, the accent shows up
+   unprompted rather than only on hover -- links read as accent-colored
+   from the start, and a <s> strikeout (used a lot in log entries for
+   the "correcting myself" bit) gets an accent-colored line instead of
+   inheriting plain --fg, so the one accent color threads through the
+   actual writing, not just the site chrome around it */
+.log-body a {
+  color: var(--accent);
+  text-decoration-color: var(--accent);
+}
+
+.log-body s,
+.log-body del {
+  text-decoration-color: var(--accent);
+}
+
+/* <mark> as a quiet accent outline rather than the default yellow
+   highlighter-pen fill -- a filled block of color would compete with
+   the one accent used everywhere else. Text color stays --fg (not
+   accent) so it doesn't read as a link, just a boxed annotation */
+.log-body mark {
+  background: none;
+  color: inherit;
+  border: 1px solid var(--accent);
+  border-radius: 2px;
+  padding: 0 0.2em;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+}
+
+/* a quoted line gets the accent as a left border/margin note, the way
+   you'd underline a passage in a physical notebook -- text itself
+   stays dim, same treatment as other metadata-ish text on the page */
+.log-body blockquote {
+  margin: 1em 0;
+  padding-left: 1em;
+  border-left: 2px solid var(--accent);
+  color: var(--fg-dim);
+}
+
+.log-body blockquote p:last-child {
+  margin-bottom: 0;
+}
+
 a:focus-visible,
 button:focus-visible,
 input:focus-visible,

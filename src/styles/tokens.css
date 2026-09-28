@@ -26,27 +26,61 @@
                                     mirroring --measure's cap on its width */
 }
 
+/* "emerald ink" -- 2026-09-28 repaint. The color story lives in the
+   desktop backdrop (champagne) and the accent (emerald ink); the paper
+   itself stays the same neutral off-white it always was, so body copy
+   is never read against a saturated color -- champagne is a warm frame
+   around the window, not the surface you're reading. */
 :root,
 [data-theme="default"] {
-  --bg:           #fbfaf8;   /* warm off-white, never pure white -- the "paper" inside the terminal window */
-  --bg-desktop:   #e7e8e6;   /* the "desktop" behind the window -- deliberately cooler/
-                                 grayer than the paper, not warm cream, so the two read
-                                 as different surfaces rather than one bootcamp-cream page */
-  --rule-desktop: #d3d5d2;   /* the desktop's own dot pattern, cooled to match */
+  --bg:           #f3efe7;   /* warmed off-white -- nudged toward champagne's hue so the
+                                 paper and the desktop read as one warm family, but kept
+                                 far lighter/less saturated than champagne itself since
+                                 body copy still sits directly on this surface */
+  --bg-desktop:   #f8e7c9;   /* "champagne" -- the desktop behind the window. This is
+                                 where the warm color story actually lives */
+  --rule-desktop: #e6d3a3;   /* the desktop's own dot pattern, a shade down from champagne */
   --fg:        #1a1917;
   --fg-dim:    #6b6864;   /* metadata, the `type help` hint */
-  --rule:      #e2dfd9;   /* ASCII separators, borders */
-  --accent:    #2f7a78;   /* status dot, focus rings - used sparingly. A cool
-                               teal on purpose: the desktop is already a cool
-                               neutral (deliberately not warm cream, see above),
-                               so the one color note in the system stays in that
-                               same cool family instead of fighting it with a
-                               warm orange/amber */
+  --rule:      #d9d4c8;   /* ASCII separators, borders -- a shade down from the warmed --bg */
+  --accent:    #064e3b;   /* "emerald ink" -- status dot, focus rings, links, used
+                               sparingly. High contrast against the off-white paper
+                               (~14:1) without any adjustment */
 
   --term-bg:     #171614;   /* terminal overlay */
-  --term-fg:     #e8e5df;
-  --term-dim:    #7d7a73;
-  --term-accent: #5cbab6;   /* --accent, brightened -- the regular accent is
-                                tuned for the light paper and reads too dark/
-                                muddy as a border against this near-black bg */
+  --term-fg:     #ece3d1;   /* warmed off-white, champagne-tinted rather than neutral gray */
+  --term-dim:    #857e6c;
+  --term-accent: #e2c99c;   /* NOT a brightened --accent: a bright emerald on near-black
+                                reads as literal green-phosphor "hacker terminal" cliche.
+                                Pulling the terminal's accent from champagne instead --
+                                a soft, pale gold rather than a saturated brass/orange --
+                                ties the border straight back to --bg-desktop's color,
+                                just lightened less than champagne itself so it still
+                                reads as a distinct edge against --term-bg */
+  --term-cursor: #1ab38a;   /* the one deliberate exception -- just the blinking text
+                                caret is a brightened, vivid version of --accent's hue.
+                                A single small green blink reads as a classic-terminal
+                                wink rather than the cliche a whole green UI would be;
+                                --accent itself is too dark to be visible as a caret on
+                                --term-bg (it was tuned for the light paper) */
 }
+
+/*
+ * Previous default (2026-09-14 -- 2026-09-27): a cool teal accent on a
+ * warm paper / cool-gray desktop. Kept here, unwired, as the values to
+ * reach for if/when this becomes a selectable second theme rather than
+ * a replacement. Not an active [data-theme] block -- no switcher exists
+ * yet, this is just so the exact values aren't lost.
+ *
+ * --bg:           #fbfaf8;
+ * --bg-desktop:   #e7e8e6;
+ * --rule-desktop: #d3d5d2;
+ * --fg:        #1a1917;
+ * --fg-dim:    #6b6864;
+ * --rule:      #e2dfd9;
+ * --accent:    #2f7a78;
+ * --term-bg:     #171614;
+ * --term-fg:     #e8e5df;
+ * --term-dim:    #7d7a73;
+ * --term-accent: #5cbab6;
+ */
