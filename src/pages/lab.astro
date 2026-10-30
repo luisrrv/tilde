@@ -1,0 +1,63 @@
+---
+import Base from '../layouts/Base.astro';
+
+// Small experiments and toys (blueprint §5). Kept as a plain list in
+// code rather than a table: §11 says not to add tables until a real
+// feature needs one, and a handful of entries doesn't.
+interface Experiment {
+  name: string;
+  tagline: string;
+  story: string;
+  url: string;
+  source?: string;
+  made: string; // YYYY-MM
+}
+
+const experiments: Experiment[] = [
+  {
+    name: 'keymash',
+    tagline: 'a keyboard toy for very small humans.',
+    story: 'my toddler kept trying to use my keyboard, so I made the keyboard do something.',
+    url: 'https://keymash.netlify.app',
+    source: 'https://github.com/luisrrv/keymash',
+    made: '2026-10',
+  },
+];
+---
+
+<Base title="lab — ~luis" description="Small experiments, toys and playful code.">
+  <h1>lab</h1>
+  <p class="meta">small experiments, useless tools, playful code.</p>
+
+  <div class="ascii-rule"></div>
+
+  {experiments.map((x, i) => (
+    <>
+      <article class="experiment">
+        <h2>{x.name}</h2>
+        <p class="tagline">{x.tagline}</p>
+        <p>{x.story}</p>
+        <p class="meta">
+          <a href={x.url}>[ open &rarr; ]</a>
+          {x.source && <> &nbsp;<a href={x.source}>source</a></>}
+          &nbsp;· {x.made}
+        </p>
+      </article>
+      {i < experiments.length - 1 && <div class="ascii-rule"></div>}
+    </>
+  ))}
+</Base>
+
+<style>
+  .experiment {
+    margin-bottom: 1.5em;
+  }
+  .experiment h2 {
+    font-size: var(--text-lg);
+    margin-bottom: 0.15em;
+  }
+  .tagline {
+    color: var(--fg-dim);
+    margin-top: 0;
+  }
+</style>

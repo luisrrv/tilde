@@ -72,6 +72,7 @@ try {
         <nav>
           <a href="/log">log</a>
           <a href="/now">now</a>
+          <a href="/lab">lab</a>
         </nav>
         <button
           type="button"
@@ -429,8 +430,10 @@ try {
         window.location.href = '/now';
         break;
       case 'stuff':
-      case 'lab':
         print(`${cmd} isn't built yet.`);
+        break;
+      case 'lab':
+        window.location.href = '/lab';
         break;
       case 'work':
         window.location.href = 'https://lrod.dev';
