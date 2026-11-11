@@ -89,8 +89,7 @@ try {
         <slot />
       </main>
 
-      <footer class="measure">
-        <p class="rule"></p>
+      <footer class="measure site-footer">
         <p class="meta last-updated">last updated: {buildDate}</p>
       </footer>
     </div>
@@ -118,10 +117,22 @@ try {
 </html>
 
 <style>
-  /* the footer is just the build date, always on the right */
+  /* mirrors .site-header: same vertical padding and line-box height,
+     with the rule on the opposite edge -- a status bar to its titlebar */
+  .site-footer {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    padding-block: 1rem;
+    margin-top: 2rem;
+    border-top: 1px solid var(--fg);
+  }
+
   .last-updated {
-    margin: 0 0 1em;
-    text-align: right;
+    margin: 0;
+    /* same line height as the header's ~ wordmark (its tallest item),
+       so both bars come out the same height */
+    line-height: calc(var(--text-lg) * var(--leading-body));
   }
 
   /* No font-size here: .measure's 64ch must compute against the same
