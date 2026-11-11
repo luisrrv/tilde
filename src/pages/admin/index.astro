@@ -25,6 +25,7 @@ import Base from '../../layouts/Base.astro';
     <nav class="tabs">
       <button type="button" class="tab-btn" data-tab="logs" aria-current="true">logs</button>
       <button type="button" class="tab-btn" data-tab="now">now</button>
+      <button type="button" class="tab-btn" data-tab="lab">lab</button>
       <button type="button" id="logout-btn">logout</button>
     </nav>
 
@@ -107,6 +108,63 @@ import Base from '../../layouts/Base.astro';
       </form>
       <p class="meta" id="now-message"></p>
     </div>
+
+    <div id="tab-lab" hidden>
+      <h2 id="lab-form-heading">new lab entry</h2>
+      <form id="lab-form">
+        <label class="field">
+          <span class="field-label">name</span>
+          <input type="text" id="lab-name" required autocomplete="off" />
+        </label>
+
+        <label class="field">
+          <span class="field-label">tagline</span>
+          <input type="text" id="lab-tagline" autocomplete="off" />
+          <span class="meta">optional — one short line</span>
+        </label>
+
+        <label class="field">
+          <span class="field-label">story</span>
+          <textarea id="lab-story" rows="5"></textarea>
+          <span class="meta">optional — markdown, same as logs</span>
+        </label>
+
+        <label class="field">
+          <span class="field-label">url</span>
+          <input type="url" id="lab-url" required autocomplete="off" placeholder="https://" />
+        </label>
+
+        <label class="field">
+          <span class="field-label">source</span>
+          <input type="url" id="lab-source" autocomplete="off" placeholder="https://" />
+          <span class="meta">optional</span>
+        </label>
+
+        <label class="field">
+          <span class="field-label">made</span>
+          <input type="month" id="lab-made" required />
+        </label>
+
+        <label class="field field-checkbox">
+          <input type="checkbox" id="lab-published" />
+          <span class="field-label">published</span>
+        </label>
+
+        <div class="button-row">
+          <button type="submit">save</button>
+          <button type="button" id="lab-new-btn">new entry</button>
+        </div>
+        <p class="meta" id="lab-message"></p>
+      </form>
+
+      <h3>story preview</h3>
+      <div id="lab-preview" class="log-body preview-box"></div>
+
+      <div class="ascii-rule"></div>
+
+      <h3>entries</h3>
+      <ul id="lab-list" class="plain-list"></ul>
+    </div>
   </section>
 </Base>
 
@@ -145,11 +203,27 @@ import Base from '../../layouts/Base.astro';
   const nowForm = document.getElementById('now-form') as HTMLFormElement;
   const nowMessage = document.getElementById('now-message')!;
 
+  const tabLab = document.getElementById('tab-lab')!;
+  const labForm = document.getElementById('lab-form') as HTMLFormElement;
+  const labFormHeading = document.getElementById('lab-form-heading')!;
+  const labName = document.getElementById('lab-name') as HTMLInputElement;
+  const labTagline = document.getElementById('lab-tagline') as HTMLInputElement;
+  const labStory = document.getElementById('lab-story') as HTMLTextAreaElement;
+  const labUrl = document.getElementById('lab-url') as HTMLInputElement;
+  const labSource = document.getElementById('lab-source') as HTMLInputElement;
+  const labMade = document.getElementById('lab-made') as HTMLInputElement;
+  const labPublished = document.getElementById('lab-published') as HTMLInputElement;
+  const labMessage = document.getElementById('lab-message')!;
+  const labNewBtn = document.getElementById('lab-new-btn')!;
+  const labPreview = document.getElementById('lab-preview')!;
+  const labList = document.getElementById('lab-list')!;
+
   // ---- state -------------------------------------------------------------
   let editingId: string | null = null;
   let editingWasPublished = false;
   let slugTouchedByUser = false;
   let nowBaseline: Record<string, string> = {};
+  let labEditingId: string | null = null;
 
   // ---- helpers -------------------------------------------------------------
   function slugify(input: string): string {
@@ -377,6 +451,143 @@ import Base from '../../layouts/Base.astro';
     }
   });
 
+  // ---- lab form -------------------------------------------------------------
+  // Same shape as the log form: create + edit, no delete (unpublish to
+  // hide). `made` is a month picker; the table stores the first of that
+  // month as a date and /lab shows it as YYYY-MM.
+  function thisTokyoMonth(): string {
+    return todaySlugBase().slice(0, 7); // YYYY-MM
+  }
+
+  function isHttpUrl(value: string): boolean {
+    try {
+      const u = new URL(value);
+      return u.protocol === 'https:' || u.protocol === 'http:';
+    } catch {
+      return false;
+    }
+  }
+
+  function updateLabPreview() {
+    labPreview.innerHTML = labStory.value ? renderMarkdown(labStory.value) : '';
+  }
+
+  function resetLabForm() {
+    labEditingId = null;
+    labFormHeading.textContent = 'new lab entry';
+    labForm.reset();
+    labMade.value = thisTokyoMonth();
+    labMessage.textContent = '';
+    updateLabPreview();
+  }
+
+  async function refreshLabList() {
+    const { data, error } = await sb
+      .from('lab')
+      .select('id, name, made, published')
+      .order('made', { ascending: false })
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      labList.innerHTML = `<li class="meta">failed to load entries: ${error.message}</li>`;
+      return;
+    }
+
+    labList.innerHTML = '';
+    for (const row of data ?? []) {
+      const li = document.createElement('li');
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'log-list-item';
+      btn.textContent = `${row.published ? '●' : '○'} ${row.name} — ${String(row.made).slice(0, 7)}`;
+      btn.addEventListener('click', () => loadLabEntry(row.id));
+      li.appendChild(btn);
+      labList.appendChild(li);
+    }
+    if ((data ?? []).length === 0) {
+      labList.innerHTML = '<li class="meta">no entries yet.</li>';
+    }
+  }
+
+  async function loadLabEntry(id: string) {
+    const { data, error } = await sb.from('lab').select('*').eq('id', id).single();
+    if (error || !data) {
+      labMessage.textContent = `failed to load entry: ${error?.message ?? 'not found'}`;
+      return;
+    }
+    labEditingId = data.id;
+    labFormHeading.textContent = `editing: ${data.name}`;
+    labName.value = data.name;
+    labTagline.value = data.tagline ?? '';
+    labStory.value = data.story ?? '';
+    labUrl.value = data.url;
+    labSource.value = data.source_url ?? '';
+    labMade.value = String(data.made).slice(0, 7);
+    labPublished.checked = data.published;
+    labMessage.textContent = '';
+    updateLabPreview();
+    window.scrollTo({ top: labForm.offsetTop, behavior: 'smooth' });
+  }
+
+  labStory.addEventListener('input', updateLabPreview);
+  labNewBtn.addEventListener('click', resetLabForm);
+
+  labForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const name = labName.value.trim();
+    const url = labUrl.value.trim();
+    const source = labSource.value.trim();
+    const month = labMade.value; // YYYY-MM
+
+    if (!name) {
+      labMessage.textContent = 'name is required.';
+      return;
+    }
+    if (!isHttpUrl(url)) {
+      labMessage.textContent = 'url must start with https:// (or http://).';
+      return;
+    }
+    if (source && !isHttpUrl(source)) {
+      labMessage.textContent = 'source must be a full https:// link, or empty.';
+      return;
+    }
+    if (!/^\d{4}-\d{2}$/.test(month)) {
+      labMessage.textContent = 'made needs a month.';
+      return;
+    }
+
+    const row = {
+      name,
+      tagline: labTagline.value.trim(),
+      story: labStory.value.trim(),
+      url,
+      source_url: source || null,
+      made: `${month}-01`,
+      published: labPublished.checked,
+    };
+
+    labMessage.textContent = 'saving…';
+    try {
+      if (labEditingId) {
+        const { error } = await sb
+          .from('lab')
+          .update({ ...row, updated_at: new Date().toISOString() })
+          .eq('id', labEditingId);
+        if (error) throw error;
+      } else {
+        const { data, error } = await sb.from('lab').insert(row).select().single();
+        if (error) throw error;
+        labEditingId = data.id;
+        labFormHeading.textContent = `editing: ${data.name}`;
+      }
+      labMessage.textContent = 'saved.';
+      await refreshLabList();
+    } catch (err: any) {
+      labMessage.textContent = `save failed: ${err.message ?? err}`;
+    }
+  });
+
   // ---- tabs -------------------------------------------------------------
   tabButtons.forEach((btn) => {
     btn.addEventListener('click', () => {
@@ -385,6 +596,7 @@ import Base from '../../layouts/Base.astro';
       btn.setAttribute('aria-current', 'true');
       tabLogs.hidden = tab !== 'logs';
       tabNow.hidden = tab !== 'now';
+      tabLab.hidden = tab !== 'lab';
     });
   });
 
@@ -394,7 +606,8 @@ import Base from '../../layouts/Base.astro';
     loginPanel.hidden = true;
     appPanel.hidden = false;
     resetLogForm();
-    await Promise.all([refreshLogList(), loadNowForm()]);
+    resetLabForm();
+    await Promise.all([refreshLogList(), loadNowForm(), refreshLabList()]);
   }
 
   function showLoggedOut() {
@@ -450,6 +663,8 @@ import Base from '../../layouts/Base.astro';
   }
   .field input[type='text'],
   .field input[type='email'],
+  .field input[type='url'],
+  .field input[type='month'],
   .field textarea {
     width: 100%;
     font-family: var(--font);

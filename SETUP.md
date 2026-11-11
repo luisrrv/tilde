@@ -62,6 +62,7 @@ the order they must run:
 20260914080000_logs_and_now_tables.sql   the logs + now DDL (§11)
 20260914080100_now_seed.sql              the five now rows, empty values
 20260914080200_enable_rls.sql            RLS, owner UUID placeholder
+20261111090000_lab_table.sql             lab table + its RLS + the keymash row (2026-11)
 ```
 
 **Option A — Supabase CLI** (if installed and logged in):
@@ -270,10 +271,12 @@ table (two total):
 - Table `logs`, events: Insert, Update, Delete → HTTP POST →
   the build hook URL from 10.1.
 - Table `now`, same events, same URL.
+- Table `lab`, same events, same URL (added 2026-11, named `lab_publish`).
 
 No headers or auth needed — the build hook URL is the credential.
-Both tables need their own webhook; there's no way to watch both with
-one entry.
+Each table needs its own webhook; there's no way to watch several with
+one entry. (In the current dashboard these live under **Integrations →
+Database Webhooks**, not under Database.)
 
 ### 10.4 Confirm the keep-alive function deployed
 

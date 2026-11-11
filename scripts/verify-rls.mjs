@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Proves the `logs` RLS policies actually work — not just that they
+ * Proves the `logs` and `lab` RLS policies actually work — not just that they
  * exist (blueprint.md §13, scaffold Definition of done #5).
  *
  * What it does, in order:
@@ -39,6 +39,8 @@ for (const [name, value] of Object.entries({
 
 const TEST_SLUG = `rls-test-${Date.now()}`;
 const ANON_INSERT_SLUG = `rls-test-anon-insert-${Date.now()}`;
+const LAB_TEST_NAME = `rls-test-lab-${Date.now()}`;
+const LAB_ANON_INSERT_NAME = `rls-test-lab-anon-insert-${Date.now()}`;
 
 const rest = (path) => `${SUPABASE_URL}/rest/v1/${path}`;
 
@@ -68,6 +70,51 @@ async function cleanup() {
     method: 'DELETE',
     headers: headers(SUPABASE_SERVICE_ROLE_KEY),
   }).catch(() => {});
+  for (const name of [LAB_TEST_NAME, LAB_ANON_INSERT_NAME]) {
+    await fetch(rest(`lab?name=eq.${encodeURIComponent(name)}`), {
+      method: 'DELETE',
+      headers: headers(SUPABASE_SERVICE_ROLE_KEY),
+    }).catch(() => {});
+  }
+}
+
+// Same three checks for `lab`: seed an unpublished row, anon can't see
+// it, anon can't insert.
+async function checkLab() {
+  const labRow = (name, published) => ({
+    name,
+    url: 'https://example.com',
+    made: '2026-01-01',
+    published,
+  });
+
+  const seedRes = await fetch(rest('lab'), {
+    method: 'POST',
+    headers: headers(SUPABASE_SERVICE_ROLE_KEY, { Prefer: 'return=representation' }),
+    body: JSON.stringify(labRow(LAB_TEST_NAME, false)),
+  });
+  report('lab: seed unpublished test row (service role)', seedRes.ok, `HTTP ${seedRes.status}`);
+  if (!seedRes.ok) {
+    console.error(await seedRes.text());
+    return;
+  }
+
+  const selectRes = await fetch(rest(`lab?name=eq.${encodeURIComponent(LAB_TEST_NAME)}`), {
+    headers: headers(SUPABASE_ANON_KEY),
+  });
+  const selectBody = await selectRes.json().catch(() => null);
+  report(
+    'lab: anon SELECT cannot see the unpublished row',
+    selectRes.ok && Array.isArray(selectBody) && selectBody.length === 0,
+    `HTTP ${selectRes.status}, ${Array.isArray(selectBody) ? selectBody.length : '?'} row(s) returned`
+  );
+
+  const insertRes = await fetch(rest('lab'), {
+    method: 'POST',
+    headers: headers(SUPABASE_ANON_KEY, { Prefer: 'return=representation' }),
+    body: JSON.stringify(labRow(LAB_ANON_INSERT_NAME, true)),
+  });
+  report('lab: anon INSERT is rejected', !insertRes.ok, `HTTP ${insertRes.status}`);
 }
 
 async function main() {
@@ -118,6 +165,8 @@ async function main() {
       await insertRes.text()
     );
   }
+
+  await checkLab();
 
   await cleanup();
 

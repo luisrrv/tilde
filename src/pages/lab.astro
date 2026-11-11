@@ -1,28 +1,31 @@
 ---
 import Base from '../layouts/Base.astro';
+import { supabase } from '../lib/supabase';
+import { renderMarkdown } from '../lib/markdown';
 
-// Small experiments and toys (blueprint §5). Kept as a plain list in
-// code rather than a table: §11 says not to add tables until a real
-// feature needs one, and a handful of entries doesn't.
-interface Experiment {
+// Small experiments and toys (blueprint §5), published from /admin
+// like logs and now. Build-time, RLS-gated read: only published rows.
+interface LabRow {
   name: string;
   tagline: string;
-  story: string;
+  story: string; // markdown, same renderer as logs
   url: string;
-  source?: string;
-  made: string; // YYYY-MM
+  source_url: string | null;
+  made: string; // date, first of the month -> shown as YYYY-MM
 }
 
-const experiments: Experiment[] = [
-  {
-    name: 'keymash',
-    tagline: 'a keyboard toy for very small humans.',
-    story: 'my toddler kept trying to use my keyboard, so I made the keyboard do something.',
-    url: 'https://keymash.netlify.app',
-    source: 'https://github.com/luisrrv/keymash',
-    made: '2026-10',
-  },
-];
+const { data, error } = await supabase
+  .from('lab')
+  .select('name, tagline, story, url, source_url, made')
+  .eq('published', true)
+  .order('made', { ascending: false })
+  .order('created_at', { ascending: false });
+
+if (error) {
+  throw new Error(`Failed to fetch lab entries: ${error.message}`);
+}
+
+const experiments = (data ?? []) as LabRow[];
 ---
 
 <Base title="lab — ~luis" description="Small experiments, toys and playful code.">
@@ -31,16 +34,18 @@ const experiments: Experiment[] = [
 
   <div class="ascii-rule"></div>
 
+  {experiments.length === 0 && <p class="meta">nothing here yet.</p>}
+
   {experiments.map((x, i) => (
     <>
       <article class="experiment">
         <h2>{x.name}</h2>
-        <p class="tagline">{x.tagline}</p>
-        <p>{x.story}</p>
+        {x.tagline && <p class="tagline">{x.tagline}</p>}
+        {x.story && <div class="story log-body" set:html={renderMarkdown(x.story)} />}
         <p class="meta">
           <a href={x.url}>[ open &rarr; ]</a>
-          {x.source && <> &nbsp;<a href={x.source}>source</a></>}
-          &nbsp;· {x.made}
+          {x.source_url && <> &nbsp;<a href={x.source_url}>source</a></>}
+          &nbsp;· {x.made.slice(0, 7)}
         </p>
       </article>
       {i < experiments.length - 1 && <div class="ascii-rule"></div>}
