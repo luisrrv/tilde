@@ -91,8 +91,7 @@ try {
 
       <footer class="measure">
         <p class="rule"></p>
-        <p class="under-construction">[ under construction ]</p>
-        <p class="meta">last updated: {buildDate}</p>
+        <p class="meta last-updated">last updated: {buildDate}</p>
       </footer>
     </div>
 
@@ -119,14 +118,10 @@ try {
 </html>
 
 <style>
-  .under-construction {
-    display: inline-block;
-    margin: 0 0 0.5em;
-    padding: 0.15em 0.5em;
-    border: 1px dashed var(--rule);
-    color: var(--fg-dim);
-    font-size: var(--text-sm);
-    letter-spacing: 0.05em;
+  /* the footer is just the build date, always on the right */
+  .last-updated {
+    margin: 0 0 1em;
+    text-align: right;
   }
 
   /* No font-size here: .measure's 64ch must compute against the same
