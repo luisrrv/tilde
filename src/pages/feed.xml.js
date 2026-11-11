@@ -24,7 +24,7 @@ export async function GET(context) {
     site: context.site,
     items: entries.map((entry) => ({
       title: entry.title ?? entry.slug,
-      link: `/log/${entry.slug}`,
+      link: `/log/${entry.slug}/`,
       pubDate: new Date(entry.created_at),
       content: renderMarkdown(entry.body),
       categories: entry.tags ?? [],

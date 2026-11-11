@@ -70,9 +70,9 @@ try {
       <header class="site-header measure">
         <a href="/" class="wordmark" aria-label="home">~</a>
         <nav>
-          <a href="/log">log</a>
-          <a href="/now">now</a>
-          <a href="/lab">lab</a>
+          <a href="/log/">log</a>
+          <a href="/now/">now</a>
+          <a href="/lab/">lab</a>
         </nav>
         <button
           type="button"
@@ -385,16 +385,16 @@ try {
         print(`${COMMANDS.join('  ')}\n\nprobably writing code that didn't need to exist.`);
         break;
       case 'log':
-        window.location.href = '/log';
+        window.location.href = '/log/';
         break;
       case 'now':
-        window.location.href = '/now';
+        window.location.href = '/now/';
         break;
       case 'stuff':
         print(`${cmd} isn't built yet.`);
         break;
       case 'lab':
-        window.location.href = '/lab';
+        window.location.href = '/lab/';
         break;
       case 'work':
         window.location.href = 'https://lrod.dev';
@@ -404,7 +404,7 @@ try {
           print('nothing to pick from yet.');
         } else {
           const pick = logSlugs[Math.floor(Math.random() * logSlugs.length)];
-          window.location.href = `/log/${pick}`;
+          window.location.href = `/log/${pick}/`;
         }
         break;
       case 'clear':

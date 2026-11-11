@@ -48,10 +48,10 @@ const dateFormatter = new Intl.DateTimeFormat('en-CA', {
         latest log<span class="sep" aria-hidden="true">&middot;</span><time datetime={latest.created_at}>{dateFormatter.format(new Date(latest.created_at))}</time>
       </p>
       <div class="log-body" set:html={renderMarkdown(latest.body)} />
-      <p class="meta"><a class="home-link" href="/log">more logs &rarr;</a></p>
+      <p class="meta"><a class="home-link" href="/log/">more logs &rarr;</a></p>
     </section>
   ) : (
-    <p class="meta">nothing published yet. <a href="/log">the log</a> will fill in once something is.</p>
+    <p class="meta">nothing published yet. <a href="/log/">the log</a> will fill in once something is.</p>
   )}
 
   <div class="ascii-rule"></div>

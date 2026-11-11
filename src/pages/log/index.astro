@@ -45,7 +45,7 @@ const dateFormatter = new Intl.DateTimeFormat('en-CA', {
     <>
       <article class="log-entry">
         <p class="meta">
-          <a href={`/log/${entry.slug}`}>
+          <a href={`/log/${entry.slug}/`}>
             <time datetime={entry.created_at}>{dateFormatter.format(new Date(entry.created_at))}</time>
           </a>
           {entry.title && <> — {entry.title}</>}
