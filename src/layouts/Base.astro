@@ -294,18 +294,10 @@ try {
   }
 
   // ---- first-visit greeting swap, wherever [data-greeting] appears ----
-  // then, after a few seconds, it erases itself and types in a plain
-  // standing title -- the personal greeting is a one-time flourish, not
-  // something that should sit there forever on every repeat visit.
-  const GREETING_TITLE = 'notes, below.';
-  const GREETING_HOLD_MS = 2200;
-  const GREETING_ERASE_MS = 40;
-  const GREETING_TYPE_MS = 55;
-  const GREETING_END_BLINK_MS = 1400;
-
+  // The greeting itself stays put; on the homepage, TokyoStatus runs the
+  // little intro (cursor blink, then the status line types out).
   const greeting = document.querySelector<HTMLElement>('[data-greeting]');
   const greetingText = document.querySelector<HTMLElement>('[data-greeting-text]');
-  const greetingCursor = document.querySelector<HTMLElement>('[data-greeting-cursor]');
 
   if (greeting && greetingText) {
     if (hasSeen(GREETING_SEEN_KEY)) {
@@ -315,43 +307,6 @@ try {
     // else: the first-visit copy is already sitting in the HTML —
     // the correct no-JS fallback too.
     markSeen(GREETING_SEEN_KEY);
-
-    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-
-    window.setTimeout(() => {
-      const text = greetingText;
-      const cursor = greetingCursor;
-      if (reduceMotion || !cursor) {
-        text.textContent = GREETING_TITLE;
-        return;
-      }
-
-      const original = text.textContent ?? '';
-      cursor.classList.add('blinking');
-      let i = original.length;
-
-      function erase() {
-        if (i <= 0) {
-          text.textContent = '';
-          typeNext(0);
-          return;
-        }
-        i -= 1;
-        text.textContent = original.slice(0, i);
-        window.setTimeout(erase, GREETING_ERASE_MS);
-      }
-
-      function typeNext(j: number) {
-        if (j >= GREETING_TITLE.length) {
-          window.setTimeout(() => cursor!.classList.remove('blinking'), GREETING_END_BLINK_MS);
-          return;
-        }
-        text.textContent = GREETING_TITLE.slice(0, j + 1);
-        window.setTimeout(() => typeNext(j + 1), GREETING_TYPE_MS);
-      }
-
-      erase();
-    }, GREETING_HOLD_MS);
   }
 
   // ---- terminal overlay ----

@@ -1,0 +1,171 @@
+---
+// The live status line under the homepage greeting:
+//   ☾  it's 22:30 in tokyo. winding down. probably offline.
+//
+// Client-rendered only (it depends on the current time), so the
+// server ships an empty, height-reserved line: with JS off it simply
+// stays blank and nothing below it moves. Copy lives in
+// src/lib/tokyo-status.ts.
+//
+// It also owns the homepage intro: the greeting's cursor blinks for a
+// beat, then hands off to this line, which types itself out like a
+// command's output, blinks a little longer, and settles.
+---
+
+<p class="status meta" data-tokyo-status>
+  <span class="visually-hidden" data-status-sr></span>
+  <span aria-hidden="true" data-status-visual></span>
+</p>
+
+<style>
+  .status {
+    /* one line reserved up front -- no layout shift while it types,
+       or if JS never runs */
+    min-height: calc(var(--leading-body) * 1em);
+    margin-top: -0.35em;
+  }
+
+  .status :global(.status-glyph) {
+    color: var(--accent);
+  }
+
+  .status :global(.status-time) {
+    color: var(--fg);
+  }
+
+  .status :global(.status-cursor) {
+    display: inline-block;
+    width: 0.5em;
+    height: 1em;
+    background: var(--accent);
+    margin-left: 0.05em;
+    vertical-align: -0.15em;
+    animation: status-cursor-blink 0.9s step-end infinite;
+  }
+
+  @keyframes status-cursor-blink {
+    50% { opacity: 0; }
+  }
+
+  .visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+    border: 0;
+  }
+</style>
+
+<script>
+  import { tokyoStatus, type TokyoStatus } from '../lib/tokyo-status';
+
+  const GREETING_HOLD_MS = 1300; // greeting cursor blinks this long before handing off
+  const HANDOFF_PAUSE_MS = 450;  // cursor sits at the start of the status line
+  const TYPE_SLOW_MS = 120;      // the glyph and the space after it
+  const TYPE_FAST_MS = 28;       // the rest of the sentence
+  const SLOW_STEPS = 2;
+  const END_BLINK_MS = 2600;     // cursor keeps blinking after typing, then goes
+  const REFRESH_MS = 30_000;
+
+  interface Segment {
+    text: string;
+    cls?: string;
+    atomic?: boolean; // typed as one step (the glyph is two code points: char + U+FE0E)
+  }
+
+  function segmentsFor(s: TokyoStatus): Segment[] {
+    return [
+      { text: s.glyph, cls: 'status-glyph', atomic: true },
+      { text: "  it's " },
+      { text: s.time, cls: 'status-time' },
+      { text: ` in tokyo. ${s.caption}` },
+    ];
+  }
+
+  // steps = how many typing steps a segment takes
+  const stepsIn = (seg: Segment) => (seg.atomic ? 1 : [...seg.text].length);
+  const totalSteps = (segs: Segment[]) => segs.reduce((n, seg) => n + stepsIn(seg), 0);
+
+  function paint(target: HTMLElement, segs: Segment[], upto: number, withCursor: boolean) {
+    const frag = document.createDocumentFragment();
+    let left = upto;
+    for (const seg of segs) {
+      if (left <= 0) break;
+      const n = stepsIn(seg);
+      const text = seg.atomic ? seg.text : [...seg.text].slice(0, left).join('');
+      left -= n;
+      if (seg.cls) {
+        const span = document.createElement('span');
+        span.className = seg.cls;
+        span.textContent = text;
+        frag.append(span);
+      } else {
+        frag.append(text);
+      }
+    }
+    if (withCursor) {
+      const cursor = document.createElement('span');
+      cursor.className = 'status-cursor';
+      frag.append(cursor);
+    }
+    target.replaceChildren(frag);
+  }
+
+  const root = document.querySelector<HTMLElement>('[data-tokyo-status]');
+  const sr = root?.querySelector<HTMLElement>('[data-status-sr]');
+  const visual = root?.querySelector<HTMLElement>('[data-status-visual]');
+  const greetingCursor = document.querySelector<HTMLElement>('[data-greeting-cursor]');
+
+  if (root && sr && visual) {
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    let settled = false;
+
+    const current = () => tokyoStatus();
+    const showFull = () => {
+      const s = current();
+      sr.textContent = s.sentence;
+      paint(visual, segmentsFor(s), Infinity, false);
+    };
+
+    if (reduceMotion) {
+      showFull();
+      settled = true;
+    } else {
+      const s = current();
+      sr.textContent = s.sentence; // screen readers get the sentence once, not per keystroke
+      const segs = segmentsFor(s);
+      const total = totalSteps(segs);
+
+      greetingCursor?.classList.add('blinking');
+
+      window.setTimeout(() => {
+        greetingCursor?.classList.remove('blinking');
+        paint(visual, segs, 0, true);
+
+        let step = 0;
+        const typeNext = () => {
+          step += 1;
+          paint(visual, segs, step, true);
+          if (step >= total) {
+            settled = true;
+            window.setTimeout(() => paint(visual, segmentsFor(current()), Infinity, false), END_BLINK_MS);
+            return;
+          }
+          window.setTimeout(typeNext, step < SLOW_STEPS ? TYPE_SLOW_MS : TYPE_FAST_MS);
+        };
+        window.setTimeout(typeNext, HANDOFF_PAUSE_MS);
+      }, GREETING_HOLD_MS);
+    }
+
+    // keep it current without retyping: every 30s, and when the tab comes back
+    const refresh = () => { if (settled) showFull(); };
+    window.setInterval(refresh, REFRESH_MS);
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') refresh();
+    });
+  }
+</script>

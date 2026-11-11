@@ -2,6 +2,7 @@
 import Base from '../layouts/Base.astro';
 import { supabase } from '../lib/supabase';
 import { renderMarkdown } from '../lib/markdown';
+import TokyoStatus from '../components/TokyoStatus.astro';
 
 interface LogRow {
   slug: string;
@@ -35,18 +36,19 @@ const dateFormatter = new Intl.DateTimeFormat('en-CA', {
 ---
 
 <Base title="~luis" description="Personal site and notebook.">
-  <p class="greeting" data-greeting data-return="hello, again."><span data-greeting-text>well, hello.</span><span class="cursor" data-greeting-cursor aria-hidden="true"></span></p>
+  {/* hello -> where i am right now -> what i wrote -> bye */}
+  <h1 class="greeting" data-greeting data-return="hello, again."><span data-greeting-text>well, hello.</span><span class="cursor" data-greeting-cursor aria-hidden="true"></span></h1>
+  <TokyoStatus />
 
   <div class="ascii-rule"></div>
 
   {latest ? (
     <section>
-      <p class="meta">latest:</p>
       <p class="meta">
-        <time datetime={latest.created_at}>{dateFormatter.format(new Date(latest.created_at))}</time>
+        latest log<span class="sep" aria-hidden="true">&middot;</span><time datetime={latest.created_at}>{dateFormatter.format(new Date(latest.created_at))}</time>
       </p>
       <div class="log-body" set:html={renderMarkdown(latest.body)} />
-      <p class="meta"><a href="/log">&rarr; more logs</a></p>
+      <p class="meta"><a class="home-link" href="/log">more logs &rarr;</a></p>
     </section>
   ) : (
     <p class="meta">nothing published yet. <a href="/log">the log</a> will fill in once something is.</p>
@@ -56,7 +58,8 @@ const dateFormatter = new Intl.DateTimeFormat('en-CA', {
 
   <p class="meta">this page doesn't want anything from you.</p>
 
-  <p class="meta">work stuff &rarr; <a href="https://lrod.dev">lrod.dev</a></p>
+  {/* ↗ (+ U+FE0E so iOS keeps it as text) = leaves the site; → = stays on it */}
+  <p class="meta"><a class="home-link" href="https://lrod.dev">work stuff &#x2197;&#xFE0E;</a></p>
 
 </Base>
 
@@ -64,11 +67,13 @@ const dateFormatter = new Intl.DateTimeFormat('en-CA', {
   .greeting {
     white-space: pre-line;
     font-size: var(--text-lg);
+    letter-spacing: normal;
+    margin-bottom: 0.5em;
   }
 
-  /* the erase/type cursor -- hidden until the transition script turns
-     it on, and removed again once "notes, below." has settled, so it
-     never sits there blinking forever on an otherwise static page */
+  /* the greeting's cursor -- hidden until TokyoStatus's intro turns it
+     on, then handed off to the status line after a beat, so it never
+     sits there blinking forever on an otherwise static page */
   .greeting .cursor {
     display: inline-block;
     width: 0.5em;
@@ -86,6 +91,22 @@ const dateFormatter = new Intl.DateTimeFormat('en-CA', {
 
   @keyframes greeting-cursor-blink {
     50% { opacity: 0; }
+  }
+
+  .sep {
+    margin-inline: 0.5em;
+  }
+
+  /* the two content links: accent from the start (accent = you can
+     click this), arrow after the text. Keeps the site's quiet
+     underline, which picks up the accent on hover like every link. */
+  .home-link {
+    color: var(--accent);
+  }
+
+  .home-link:hover,
+  .home-link:focus-visible {
+    text-decoration-color: currentColor;
   }
 
   .log-body :global(p:last-child) {
